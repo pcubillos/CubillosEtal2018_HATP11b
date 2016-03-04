@@ -1,0 +1,45 @@
+This file indicates how to obtain, compile, and execute the compendium
+for Cubillos et al. (2016):
+  The Bayesian Atmospheric Radiative Transfer Code for Exoplanet
+  Retrieval: Radiative-Transfer Module
+
+The lines starting with the '$' character are meant to be executed
+from a Shell terminal.
+
+
+Clone the compendium:
+$ git clone --recursive https://github.com/pcubillos/CubillosEtal2016_HATP11b
+$ cd CubillosEtal2016_HATP11b
+
+Shortcut paths:
+$ topdir=`pwd`
+$ pyline=$topdir/BART/modules/transit/pylineread/src/pylineread.py
+$ transit=$topdir/BART/modules/transit/transit/transit
+
+If you want to get the compendium for previous stages, checkout the
+respective version:
+$ cd $topdir
+$ git checkout 1d8f656
+
+FINDME: Have a table of versions and checkout tags when necessary:
+| Version   | tag     |
+|-----------|---------|
+| submitted | 1d8f656 |
+| accepted  | 2d8f656 |
+| published | 3d8f656 |
+
+Clone and compile the code:
+$ git clone --recursive https://github.com/exosports/BART BART/
+$ cd $topdir/BART
+$ git checkout 1480637
+$ cd $topdir/BART/modules/transit
+$ make
+$ cd $topdir/BART/modules/MCcubed
+$ make
+
+
+Runs:
+-----
+FINDME: List all files
+010_run-valids.txt
+020_run-BART-HATP11b.txt
