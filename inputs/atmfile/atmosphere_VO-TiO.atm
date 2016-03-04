@@ -1,0 +1,17 @@
+# This is an atmospheric-model file with TiO and VO mixing-ratios
+#  at 0.1 and 1.0 bar at a temperature of 2200 K.
+# Units: pressure (bar), temperature (K), abundance (unitless).
+
+#Values units:
+ur 1e5
+up 1e6
+q number
+
+#SPECIES
+He H2 TiO VO
+
+#TEADATA
+#Radius    Pressure   Temp    He         H2         TiO        VO
+ 73506.058 1.0130e+01 2200.00 1.5000e-01 8.5000e-01 1.0000e-07 1.0000e-08 
+ 73813.701 1.0000e+00 2200.00 1.5000e-01 8.5000e-01 1.0000e-07 1.0000e-08 
+

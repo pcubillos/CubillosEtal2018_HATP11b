@@ -1,0 +1,5 @@
+# Ignore all of these files in this directory
+*.dat
+
+# Except this file
+!.gitignore
