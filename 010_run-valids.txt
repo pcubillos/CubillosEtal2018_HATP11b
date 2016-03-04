@@ -59,9 +59,8 @@ HITEMP CO2:
 -----------
 Download the HITEMP CO2 opacity data:
 $ cd $topdir/inputs/opacity/CO2
-$ wget --user=HITRAN --password=getdata -N -r -l1 --no-parent -A.zip https://www.cfa.harvard.edu/HITRAN/HITEMP-2010/CO2_line_list/
-  FINDME: Download all at once, in current folder!?
-$ unzip \*.zip
+$ wget --user=HITRAN --password=getdata -N -i wget_HITEMP_CO2.txt
+$ unzip '*.zip'
 
 Run Transit:
 $ cd $topdir/run04_CO2/
@@ -73,7 +72,13 @@ ExoMol CH4 (Yurchenko et al. 2014):
 -----------------------------------
 Download the ExoMol CH4 data:
 $ cd $topdir/inputs/opacity/CH4
-$ http://www.exomol.com/xsecs/12C-1H4
+Go to: http://www.exomol.com/xsecs/12C-1H4
+and fetch data for:
+  delta nu = 1.0
+  nu_min =   500
+  nu_max = 11999
+for a range of temperatures from 1000 K to 2000 K in steps of 100 K.
+Be sure to check the 'two-column output' option.
 
 Format cross-section data for Transit:
 $ $topdir/BART/modules/transit/scripts/Yurchenko_CH4_format.py *.sigma
