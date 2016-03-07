@@ -7,12 +7,11 @@ sys.path.append("./BART/code")
 import makeatm as ma
 import wine as w
 import bestFit as bf
-
-sys.path.append("/home/patricio/ast/esp01/bart/main/hat-p-11b_transit_2015-05-07/runtransit3")
+sys.path.append("./inputs/ancil")
 import balance as b
 
 sys.path.append("/home/patricio/ast/esp01/code/lib/c/pt/lib")
-import pt as pt
+import PT as pt
 
 # HST data:
 wlength = np.array([
@@ -28,14 +27,25 @@ uncert = 1e-6 * np.array([40, 47, 46, 38, 41, 38, 45, 40, 35, 39, 43, 44, 46,
 
 # Spitzer data:
 swlength = np.array([3.6, 4.5])
-sdepth  = np.array([0.003354, 0.003382])
+sdepth  = np.array([0.003354, 0.003373])
 suncert = np.array([0.000025, 0.000029])
 
-cfgfile = "run07_HAT-P-11b_BART/BARToffset/bestFit_tconfig.cfg"
-args = ["transit", "-c", cfgfile]
+# Retrieval outputs from Cubillos et al. (2016):
+besttcfg  = "./inputs/bestfit/tconfig.cfg"  # Transit cfg file
+bestatm   = "./inputs/bestfit/bestfit.atm"  # Atmospheric file
+posterior = "./inputs/bestfit/output.npy"   # Posterior distribution
+# Best-fitting PT parameters:
+bestPT = np.array([-3.7916148, -6.0099733e-01,  1.0,  0.0, 5.3374064e-01])
+# Best-fitting Radius at 0.1 bar:
+bestrad = 2.9751187e+04
+# Best-fitting abundances   H2O        CH4         CO         CO2
+bestabund = np.array([2.1036386, 2.7242965, 1.6548319, -2.1056120])
+
+# Transit configuration file for best-fit:
+args = ["transit", "-c", besttcfg]
 tm.transit_init(len(args), args)
 
-# Spitzer Filters:
+# Read Spitzer Filters:
 irac1_wn, irac1_tr = w.readfilter("BART/inputs/filters/spitzer_irac1_sa.dat")
 irac2_wn, irac2_tr = w.readfilter("BART/inputs/filters/spitzer_irac2_sa.dat")
 irac1_tr -= np.amin(irac1_tr)
@@ -45,25 +55,24 @@ irac2_tr /= np.amax(irac2_tr)
 irac1_wl = 1e4/irac1_wn
 irac2_wl = 1e4/irac2_wn
 
-# Best-fit:
-mol, press, temp, abund = ma.readatm("/home/patricio/ast/esp01/bart/compendium/PhD_dissertation_Cubillos_UCF/run07_HAT-P-11b_BART/BARToffset/bestFit.atm")
+# Read atmospheric files:
+mol, press, temp, abund = ma.readatm(bestatm) # Best-fit
 # Initial guess:
-mol2, press2, temp2, abund2 = ma.readatm("run07_HAT-P-11b_BART/BARTinputs/atmosphe_HAT-P-11b.atm")
+mol2, press2, temp2, abund2 = ma.readatm("./run07_HAT-P-11b_BART/BARTinputs/atmosphe_HAT-P-11b.atm")
 
 # Temperature posterior:
-sample = np.load("run07_HAT-P-11b_BART/BARToffset/output.npy")
+sample = np.load(posterior)
 burn=1000
 p0 = sample[:9,0,burn:].flatten()
 p1 = sample[:9,1,burn:].flatten()
 p2 = sample[:9,2,burn:].flatten()
 
-tb = np.zeros(len(press))  # Best
-bestpars  = np.array([-3.7916148, -6.0099733e-01,  1.0,  0.0, 5.3374064e-01])
+# Cubillos et al (2016) best PT parameters:
+tb = np.zeros(len(press))
 
 Rs, Ts, sma, gstar = bf.get_starData("inputs/TEP/HAT-P-11b.tep")
 grav, Rp = ma.get_g("inputs/TEP/HAT-P-11b.tep")
-pt.pt(bestpars,  press, tb, Rs, Ts, 100.0, sma, grav*100)
-
+tb = pt.PT_line(press, bestPT, Rs, Ts, 100.0, sma, grav*100)
 tprofiles = np.zeros((np.size(p0), len(press)))
 Tparams = np.array([-2.8,  -0.55, 1.0, 0.0, 0.965])
 
@@ -71,7 +80,7 @@ for i in np.arange(np.size(p0)):
   Tparams[0] = p0[i]
   Tparams[1] = p1[i]
   Tparams[4] = p2[i]
-  t = pt.pt(Tparams, press, tprofiles[i], Rs, Ts, 100, sma, grav*100)
+  tprofiles[i] = pt.PT_line(press, Tparams, Rs, Ts, 100, sma, grav*100)
   if i %1000 == 0:
     print(i)
 
@@ -101,13 +110,13 @@ wn = tm.get_waveno_arr(tm.get_no_samples())
 wl = 1e4/wn
 
 # Best:
-tm.set_radius(2.9751187e+04)   # SET ME!
+tm.set_radius(bestrad)
 na = np.copy(abund2)
 rat, irat = b.ratio(na, imol)
-na[:, 9] *= 10**2.1036386e+00   # SET ME!
-na[:, 8] *= 10**2.7242965e+00
-na[:, 6] *= 10**1.6548319e+00
-na[:, 7] *= 10**-2.1056120e+00
+na[:, 9] *= 10**bestabund[0]
+na[:, 8] *= 10**bestabund[1]
+na[:, 6] *= 10**bestabund[2]
+na[:, 7] *= 10**bestabund[3]
 b.balance(na, imol, rat, irat)
 profiles = np.vstack((temp, na.T))
 tmp2 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
