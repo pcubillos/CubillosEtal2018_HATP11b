@@ -1,0 +1,8 @@
+# Ignore all of these files in this directory
+*
+
+# Except this file
+!.gitignore
+!pyline_hitran_1-5.5um.cfg
+!BART_inputs.cfg
+!BART_HAT-P-11b.cfg
