@@ -1,6 +1,7 @@
-# Plot opacity:
+#! /usr/bin/env python
 import struct
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import scipy.constants   as sc
 

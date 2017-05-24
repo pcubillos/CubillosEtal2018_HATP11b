@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import os, sys
 import matplotlib
 import numpy as np
@@ -16,7 +18,7 @@ import blackbody as bb
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Read Transit spectra:
 wl, flux_H2O = rt.readspectrum("run02_H2O/emission_H2O-pands_1-20um.dat", 0)
-wl, flux_CO  = rt.readspectrum("run03_CO/emission_CO-HITEMP_1-20um.dat", 0)
+wl, flux_CO  = rt.readspectrum("run03_CO/emission_CO-HITEMP_1-20um.dat",  0)
 wl, flux_CO2 = rt.readspectrum("run04_CO2/emission_CO2-HITEMP_1-20um.dat", 0)
 wl, flux_CH4 = rt.readspectrum("run05_CH4/emission_CH4-ExoMol_1-20um.dat", 0)
 
@@ -100,7 +102,7 @@ plt.xlim(xran)
 plt.ylim(yran)
 plt.text(15, 0.2, r"${\rm H}_2{\rm O}$", fontsize=fs)
 plt.legend(loc="upper left")
-plt.ylabel(r"$F_p/F_s\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
 ax = plt.subplot(412)  # CO
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
@@ -110,7 +112,7 @@ ax.set_xticklabels([""])
 plt.xlim(xran)
 plt.ylim(yran)
 plt.text(15, 0.2, r"${\rm CO}$", fontsize=fs)
-plt.ylabel(r"$F_p/F_s\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
 ax = plt.subplot(413)  # CO2
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
@@ -120,7 +122,7 @@ ax.set_xticklabels([""])
 plt.xlim(xran)
 plt.ylim(yran)
 plt.text(15, 0.2, r"${\rm CO}_2$", fontsize=fs)
-plt.ylabel(r"$F_p/F_s\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
 ax = plt.subplot(414)  # CH4
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
@@ -129,10 +131,10 @@ plt.semilogx(wl,     tfr_CH4,  color[1], lw=lw, alpha=alpha)
 plt.xlim(xran)
 plt.ylim(yran)
 plt.text(15, 0.2, r"${\rm CH}_4}$", fontsize=fs)
-plt.ylabel(r"$F_p/F_s\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
 plt.xlabel(r"${\rm Wavelength\ \ (um)}$", fontsize=fs)
 
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-ax.set_xticks([1, 2, 3, 4, 5, 10, 20])
+ax.set_xticks([1, 2, 3, 5, 10, 20])
 plt.savefig("plots/emission_H2O-CO-CO2-CH4.ps")
 

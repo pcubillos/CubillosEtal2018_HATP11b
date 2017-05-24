@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import sys, os, time
 from scipy.ndimage.filters import gaussian_filter1d as gaussf
 
@@ -134,8 +135,8 @@ na = np.copy(abund2)
 rat, irat = b.ratio(na, imol)
 na[:, 9] *= 10**0.0   # H2O
 na[:, 8] *= 10**0.0   # CH4
-na[:, 6] *= 10** 0.0   # CO
-na[:, 7] *= 10** 0.0   # CO2
+na[:, 6] *= 10**0.0   # CO
+na[:, 7] *= 10**0.0   # CO2
 b.balance(na, imol, rat, irat)
 profiles = np.vstack((tcold, na.T))
 tmp4 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
@@ -149,7 +150,7 @@ mod2 = gaussf(tmp2, sigma)  # Best
 mod3 = gaussf(tmp3, sigma)  # Solar
 mod4 = gaussf(tmp4, sigma)
 
-offset = 1.2142876e-04   # SET ME!
+offset = 1.2142876e-04   # SET
 plt.figure(4, (8.5,3.5))
 plt.clf()
 plt.subplots_adjust(0.13, 0.15, 0.95, 0.95)

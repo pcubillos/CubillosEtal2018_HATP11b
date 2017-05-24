@@ -1,7 +1,10 @@
+#! /usr/bin/env python
+
 import os, sys
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
-import scipy.constants as sc
+import scipy.constants   as sc
 from scipy.ndimage.filters import gaussian_filter1d as gaussf
 
 sys.path.append("BART/modules/transit/scripts")
@@ -34,8 +37,8 @@ CIA_mor *= (1e-6*wl_mor)**2.0 * 1e5
 # Read atmospheric model:
 mols, press, temp, ab = ma.readatm("inputs/atmfile/uniform01.atm")
 
-# :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Make plot:
+
+# Plot:
 lw = 1.5
 xran = 1, 20
 yran = 0, 2.3
@@ -66,27 +69,3 @@ ax.set_yticks([1e2, 1, 1e-2, 1e-4])
 plt.xlabel(r"${\rm Temperature\ \ (K)}$", fontsize=fs-1)
 plt.ylabel(r"${\rm Pressure\ \ (bar)}$",  fontsize=fs-1)
 plt.savefig("plots/CIA_emission_spectra_1-20um.ps")
-
-# Percentage difference in emission spectra:
-plt.figure(2)
-plt.clf()
-plt.plot([0,20],[0,0], "k--", lw=1.0)
-plt.plot(wl, 100*(CIA_hit-CIA_mor[:9501])/CIA_mor[:9501], "b", lw=1.5)
-plt.xlim(1, 20)
-plt.xlabel(r"${\rmWavelength\ \ (um)}$", fontsize=fs)
-plt.ylabel(r"Morley--Transit percentage difference", fontsize=fs)
-# Typical differences are 0.5%
-
-# HITRAN--Borysow difference:
-plt.figure(3)
-plt.clf()
-plt.plot([0,20],[0,0], "k--", lw=1.0)
-plt.plot(wl, 100*(CIA_bor-CIA_hit)/CIA_hit, "b", lw=1.5)
-plt.xlim(1, 20)
-plt.xlabel(r"${\rmWavelength\ \ (um)}$", fontsize=fs)
-plt.ylabel(r"Morley--Transit percentage difference", fontsize=fs)
-# The difference between HITRAN and Borysow are typically at 2.0%,
-# but with a peak of 5.0-8.0% between 1.5 and 5.0 microns.
-
-
-
