@@ -18,7 +18,7 @@ wl, CIA_hit = rt.readspectrum("run01_CIA/emission_H2He_1.0-20um_HITRAN.dat", 0)
 wl, CIA_bor = rt.readspectrum("run01_CIA/emission_H2He_1.0-20um_Borysow.dat", 0)
 
 # Read Morley's CIA spectrum:
-f = open("Morley/h2he.spec", "r")
+f = open("inputs/Morley/h2he.spec", "r")
 lines = f.readlines()
 f.close()
 

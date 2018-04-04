@@ -23,9 +23,9 @@ wl, flux_CO2 = rt.readspectrum("run04_CO2/emission_CO2-HITEMP_1-20um.dat", 0)
 wl, flux_CH4 = rt.readspectrum("run05_CH4/emission_CH4-ExoMol_1-20um.dat", 0)
 
 # Read Morley's CIA spectrum:
-mfiles = ["Morley/h2he.spec",    "Morley/h2o_h2he.spec",
-          "Morley/co_h2he.spec", "Morley/co2_h2he.spec",
-          "Morley/ch4_h2he.spec"]
+mfiles = ["inputs/Morley/h2he.spec",    "inputs/Morley/h2o_h2he.spec",
+          "inputs/Morley/co_h2he.spec", "inputs/Morley/co2_h2he.spec",
+          "inputs/Morley/ch4_h2he.spec"]
 
 mdata = []
 for j in np.arange(len(mfiles)):
