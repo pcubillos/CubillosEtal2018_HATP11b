@@ -31,16 +31,14 @@ swlength = np.array([3.6, 4.5])
 sdepth  = np.array([0.003354, 0.003373])
 suncert = np.array([0.000025, 0.000029])
 
-# Retrieval outputs from Cubillos et al. (2016):
-besttcfg  = "./inputs/bestfit/tconfig.cfg"  # Transit cfg file
-bestatm   = "./inputs/bestfit/bestfit.atm"  # Atmospheric file
-posterior = "./inputs/bestfit/output.npy"   # Posterior distribution
-# Best-fitting PT parameters:
-bestPT = np.array([-3.7916148, -6.0099733e-01,  1.0,  0.0, 5.3374064e-01])
-# Best-fitting Radius at 0.1 bar:
-bestrad = 2.9751187e+04
-# Best-fitting abundances   H2O        CH4         CO         CO2
-bestabund = np.array([2.1036386, 2.7242965, 1.6548319, -2.1056120])
+# Retrieval outputs from Cubillos et al. (2018):
+root = "./inputs/bestfit/"
+# Retrieval outputs from local run:
+#root = "./run07_HAT-P-11b_BART/run07_HAT-P-11b_BART/BART_retrieval/"
+
+besttcfg  = root + "bestFit_tconfig.cfg"  # Transit cfg file
+bestatm   = root + "bestFit.atm"          # Atmospheric file
+posterior = root + "output.npz"           # Posterior distribution
 
 # Transit configuration file for best-fit:
 args = ["transit", "-c", besttcfg]
@@ -61,12 +59,19 @@ mol, press, temp, abund = ma.readatm(bestatm) # Best-fit
 # Initial guess:
 mol2, press2, temp2, abund2 = ma.readatm("./run07_HAT-P-11b_BART/BARTinputs/atmosphe_HAT-P-11b.atm")
 
-# Temperature posterior:
 sample = np.load(posterior)
-burn=1000
-p0 = sample[:9,0,burn:].flatten()
-p1 = sample[:9,1,burn:].flatten()
-p2 = sample[:9,2,burn:].flatten()
+# Best-fitting PT parameters:
+bestPT    = sample["bestp"][0:5]
+# Best-fitting Radius at 0.1 bar:
+bestrad   = sample["bestp"][5]
+# Best-fitting abundances: H2O CH4 CO CO2
+bestabund = sample["bestp"][7:]
+
+# Temperature posterior:
+burn = 3000
+p0 = sample["Z"][:,0,burn:].flatten()
+p1 = sample["Z"][:,1,burn:].flatten()
+p2 = sample["Z"][:,2,burn:].flatten()
 
 # Cubillos et al (2016) best PT parameters:
 tb = np.zeros(len(press))
@@ -82,7 +87,7 @@ for i in np.arange(np.size(p0)):
   Tparams[1] = p1[i]
   Tparams[4] = p2[i]
   tprofiles[i] = pt.PT_line(press, Tparams, Rs, Ts, 100, sma, grav*100)
-  if i %1000 == 0:
+  if (i+1)%int(np.size(p0)/10) == 0:
     print(i)
 
 low1 = np.percentile(tprofiles, 16,   axis=0)
@@ -92,15 +97,15 @@ hi2  = np.percentile(tprofiles, 97.5, axis=0)
 median = np.median(tprofiles, axis=0)
 
 # Radius posterior at 0.1 bar:
-rad     = sample[:9,3,burn:].flatten()
+rad     = sample["Z"][:,3,burn:].flatten()
 # WFC3 offset (ppm):
-poffset = sample[:9,4,burn:].flatten() * 1e6
+poffset = sample["Z"][:,4,burn:].flatten() * 1e6
 # abundances at 0.1 bar:
 ipress = 44
-pH2O    = sample[:9,5,burn:].flatten() + np.log10(abund2[ipress][9])
-pCH4    = sample[:9,6,burn:].flatten() + np.log10(abund2[ipress][8])
-pCO     = sample[:9,7,burn:].flatten() + np.log10(abund2[ipress][6])
-pCO2    = sample[:9,8,burn:].flatten() + np.log10(abund2[ipress][7])
+pH2O    = sample["Z"][:,5,burn:].flatten() + np.log10(abund2[ipress][9])
+pCH4    = sample["Z"][:,6,burn:].flatten() + np.log10(abund2[ipress][8])
+pCO     = sample["Z"][:,7,burn:].flatten() + np.log10(abund2[ipress][6])
+pCO2    = sample["Z"][:,8,burn:].flatten() + np.log10(abund2[ipress][7])
 
 # Initialize stuff:
 imol = [1,5]
