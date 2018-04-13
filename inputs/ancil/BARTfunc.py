@@ -144,7 +144,6 @@ def main(comm):
   # EDIT:
   noffset = 1
   nPT     = nfree - nmolfit - nradfit - noffset # Number of PT free parameters
-  #nPT     = nfree - nmolfit - nradfit   # Number of PT free parameters
 
   # Read atmospheric file to get data arrays:
   species, pressure, temp, abundances = mat.readatm(atmfile)
@@ -252,7 +251,7 @@ def main(comm):
   # ::::::  Main MCMC Loop  ::::::::::::::::::::::::::::::::::::::::::
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  while niter >= 0:
+  while niter > 0:
     niter -= 1
     # Receive parameters from MCMC:
     mu.comm_scatter(comm, params)
@@ -280,12 +279,18 @@ def main(comm):
       m = imol[i]
       # Use variable as the log10:
       # EDIT:
-      #aprofiles[m] = abundances[:, m] * 10.0**params[nPT+nradfit+i]
       aprofiles[m]  = abundances[:, m] * 10.0**params[nPT+nradfit+noffset+i]
       molfit_sum   += abundances[:, m] * 10.0**params[nPT+nradfit+noffset+i]
 
+    #if np.any(molfit_sum > 0.15):
+    #  mu.comm_gather(comm, -np.ones(nfilters), MPI.DOUBLE)
+    #  continue
+
     # Update H2, He abundances so sum(abundances) = 1.0 in each layer:
     q = 1.0 - np.sum(aprofiles[imetals], axis=0)
+    if np.any(q < 0.0):
+      mu.comm_gather(comm, -np.ones(nfilters), MPI.DOUBLE)
+      continue
     aprofiles[iH2] = ratio * q / (1.0 + ratio)
     aprofiles[iHe] =         q / (1.0 + ratio)
 
@@ -293,8 +298,8 @@ def main(comm):
     if solution == "transit":
       trm.set_radius(params[nPT])
 
-    if rank == 1:
-      print("Iteration: {:05}".format(niter))
+    #if rank == 1:
+    #  print("Iteration: {:05}".format(niter))
     # Let transit calculate the model spectrum:
     spectrum = trm.run_transit(profiles.flatten(), nwave)
 
