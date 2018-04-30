@@ -241,17 +241,14 @@ def main(comm):
   params = np.zeros(npars, np.double)
 
   # EDIT:
-  # Array to control the sum of the modified abundance profiles:
-  molfit_sum = np.zeros(nlayers, np.double)
   # Gaussian convolve to decrease the resolution:
   sigma  = 42.0
-  offset =  0.0  # Offset free parameter
   nWFC3  = 29    # Number of WFC3 points
 
   # ::::::  Main MCMC Loop  ::::::::::::::::::::::::::::::::::::::::::
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  while niter > 0:
+  while niter >= 0:
     niter -= 1
     # Receive parameters from MCMC:
     mu.comm_scatter(comm, params)
@@ -269,22 +266,14 @@ def main(comm):
 
     # If the temperature goes out of bounds:
     if np.any(tprofile < Tmin) or np.any(tprofile > Tmax):
-      #print("Out of bounds")
       mu.comm_gather(comm, -np.ones(nfilters), MPI.DOUBLE)
       continue
-    # EDIT:
-    molfit_sum[:] = 0.0  # Re-set the molfit sum
     # Scale abundance profiles:
     for i in np.arange(nmolfit):
       m = imol[i]
       # Use variable as the log10:
       # EDIT:
-      aprofiles[m]  = abundances[:, m] * 10.0**params[nPT+nradfit+noffset+i]
-      molfit_sum   += abundances[:, m] * 10.0**params[nPT+nradfit+noffset+i]
-
-    #if np.any(molfit_sum > 0.15):
-    #  mu.comm_gather(comm, -np.ones(nfilters), MPI.DOUBLE)
-    #  continue
+      aprofiles[m] = abundances[:, m] * 10.0**params[nPT+nradfit+noffset+i]
 
     # Update H2, He abundances so sum(abundances) = 1.0 in each layer:
     q = 1.0 - np.sum(aprofiles[imetals], axis=0)
@@ -298,12 +287,9 @@ def main(comm):
     if solution == "transit":
       trm.set_radius(params[nPT])
 
-    #if rank == 1:
-    #  print("Iteration: {:05}".format(niter))
     # Let transit calculate the model spectrum:
     spectrum = trm.run_transit(profiles.flatten(), nwave)
 
-    # Output converter band-integrate the spectrum:
     # Calculate the band-integrated intensity per filter:
     for i in np.arange(nfilters):
       if   solution == "eclipse":
