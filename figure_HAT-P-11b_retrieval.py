@@ -1,5 +1,11 @@
 #! /usr/bin/env python
-import sys, os, time
+
+import sys
+import os
+import time
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 from scipy.ndimage.filters import gaussian_filter1d as gaussf
 
 sys.path.append("./BART/modules/transit/transit/python")
@@ -31,14 +37,18 @@ swlength = np.array([3.6, 4.5])
 sdepth  = np.array([0.003354, 0.003373])
 suncert = np.array([0.000025, 0.000029])
 
-# Retrieval outputs from Cubillos et al. (2018):
-root = "./inputs/bestfit/"
 # Retrieval outputs from local run:
-#root = "./run07_HAT-P-11b_BART/run07_HAT-P-11b_BART/BART_retrieval/"
+root = "./run07_HAT-P-11b_BART/BART_retrieval/"
+# Best-fit outputs from Cubillos et al. (2018):
+#root = "./inputs/bestfit/"
 
 besttcfg  = root + "bestFit_tconfig.cfg"  # Transit cfg file
 bestatm   = root + "bestFit.atm"          # Atmospheric file
-posterior = root + "output.npz"           # Posterior distribution
+bestmcmc  = root + "MCMC.log"             # MCMC log file
+
+# Posterior file is too large, will always use user's file:
+#posterior = root + "output.npy"
+posterior = "./run07_HAT-P-11b_BART/BART_retrieval/" + "output.npy"
 
 # Transit configuration file for best-fit:
 args = ["transit", "-c", besttcfg]
@@ -57,25 +67,25 @@ irac2_wl = 1e4/irac2_wn
 # Read atmospheric files:
 mol, press, temp, abund = ma.readatm(bestatm) # Best-fit
 # Initial guess:
-mol2, press2, temp2, abund2 = ma.readatm("./run07_HAT-P-11b_BART/BARTinputs/atmosphe_HAT-P-11b.atm")
+mol2, press2, temp2, abund2 = ma.readatm(
+                  "./run07_HAT-P-11b_BART/BARTinputs/atmosphe_HAT-P-11b.atm")
+
+bestp, bestu = bf.read_MCMC_out(root + "MCMC.log")
+# Best-fitting PT parameters:
+bestPT    = bestp[0:5]
+# Best-fitting Radius at 0.1 bar:
+bestrad   = bestp[5]
+# Best-fitting abundances: H2O CH4 CO CO2
+bestabund = bestp[7:]
 
 sample = np.load(posterior)
-# Best-fitting PT parameters:
-bestPT    = sample["bestp"][0:5]
-# Best-fitting Radius at 0.1 bar:
-bestrad   = sample["bestp"][5]
-# Best-fitting abundances: H2O CH4 CO CO2
-bestabund = sample["bestp"][7:]
-
 # Temperature posterior:
 burn = 3000
-p0 = sample["Z"][:,0,burn:].flatten()
-p1 = sample["Z"][:,1,burn:].flatten()
-p2 = sample["Z"][:,2,burn:].flatten()
+p0 = sample[:,0,burn:].flatten()
+p1 = sample[:,1,burn:].flatten()
+p2 = sample[:,2,burn:].flatten()
 
-# Cubillos et al (2016) best PT parameters:
 tb = np.zeros(len(press))
-
 Rs, Ts, sma, gstar = bf.get_starData("inputs/TEP/HAT-P-11b.tep")
 grav, Rp = ma.get_g("inputs/TEP/HAT-P-11b.tep")
 tb = pt.PT_line(press, bestPT, Rs, Ts, 100.0, sma, grav*100)
@@ -88,7 +98,7 @@ for i in np.arange(np.size(p0)):
   Tparams[4] = p2[i]
   tprofiles[i] = pt.PT_line(press, Tparams, Rs, Ts, 100, sma, grav*100)
   if (i+1)%int(np.size(p0)/10) == 0:
-    print(i)
+    print("{:.1f}%".format(i*100.0/np.size(p0)))
 
 low1 = np.percentile(tprofiles, 16,   axis=0)
 hi1  = np.percentile(tprofiles, 84,   axis=0)
@@ -97,15 +107,15 @@ hi2  = np.percentile(tprofiles, 97.5, axis=0)
 median = np.median(tprofiles, axis=0)
 
 # Radius posterior at 0.1 bar:
-rad     = sample["Z"][:,3,burn:].flatten()
+rad     = sample[:,3,burn:].flatten()
 # WFC3 offset (ppm):
-poffset = sample["Z"][:,4,burn:].flatten() * 1e6
+poffset = sample[:,4,burn:].flatten() * 1e6
 # abundances at 0.1 bar:
 ipress = 44
-pH2O    = sample["Z"][:,5,burn:].flatten() + np.log10(abund2[ipress][9])
-pCH4    = sample["Z"][:,6,burn:].flatten() + np.log10(abund2[ipress][8])
-pCO     = sample["Z"][:,7,burn:].flatten() + np.log10(abund2[ipress][6])
-pCO2    = sample["Z"][:,8,burn:].flatten() + np.log10(abund2[ipress][7])
+pH2O    = sample[:,5,burn:].flatten() + np.log10(abund2[ipress][9])
+pCH4    = sample[:,6,burn:].flatten() + np.log10(abund2[ipress][8])
+pCO     = sample[:,7,burn:].flatten() + np.log10(abund2[ipress][6])
+pCO2    = sample[:,8,burn:].flatten() + np.log10(abund2[ipress][7])
 
 # Initialize stuff:
 imol = [1,5]
@@ -179,8 +189,8 @@ plt.xlim(1.0, 5.5)
 plt.ylim(yran)
 plt.savefig("plots/HAT-P-11b_spectra.ps")
 
-fs=11
-lw=1.5
+fs = 11
+lw = 1.5
 mname = ["", r"${\rm He}$", "", "", "", r"${\rm H}_2$",
        r"${\rm CO}$", r"${\rm CO}_2$", r"${\rm CH}_4$", r"${\rm H}_2{\rm O}$",
        r"${\rm NH}_3$", r"${\rm C}_2{\rm H}_2$", "", r"${\rm HCN}$"]
@@ -195,9 +205,6 @@ plt.loglog(abund2[:, 6], press, "-",  lw=lw, label=mname[ 6], color="limegreen")
 plt.loglog(abund2[:, 7], press, "-",  lw=lw, label=mname[ 7], color="r")
 plt.loglog(abund2[:, 8], press, "-",  lw=lw, label=mname[ 8], color="m")
 plt.loglog(abund2[:, 9], press, "-",  lw=lw, label=mname[ 9], color="k")
-plt.loglog(abund2[:,10], press, "--", lw=lw, label=mname[10], color="brown")
-plt.loglog(abund2[:,11], press, "--", lw=lw, label=mname[11], color="c")
-plt.loglog(abund2[:,13], press, "--", lw=lw, label=mname[13], color="0.4")
 plt.legend(loc="lower left", fontsize=fs-1)
 plt.ylim(press[0], press[-1])
 plt.xlim(1e-26, 1e1)
@@ -219,43 +226,51 @@ axl = plt.legend(loc="upper right", fontsize=fs-1)
 axl.get_frame().set_alpha(0.6)
 ax.set_yticklabels([""])
 ax.set_yticks([1e-8, 1e-6, 1e-4, 1e-2, 1e-0, 1e2])
+plt.xticks(size=fs)
 plt.xlabel(r"${\rm Temperature\ \ (K)}$", fontsize=fs)
+
 
 nb = 14
 lhx = 0.59
 dhx = 0.12
 dhy = 0.3
-ax = plt.axes([lhx,            0.33 + dhy, dhx, dhy]) # TOP LEFT
+ax = plt.axes([lhx,            0.33 + dhy, dhx, dhy]) # Top left
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(rad, bins=nb)
 ax.set_xticks([29000, 30000])
 plt.xlabel(r"${\rm Radius\ (km)}$", fontsize=fs)
-ax = plt.axes([lhx,            0.18,       dhx, dhy]) # BOT LEFT
+plt.xticks(size=fs-1)
+ax = plt.axes([lhx,            0.18,       dhx, dhy]) # Bot left
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(poffset, bins=nb)
 ax.set_xticks([0,100, 200])
 plt.xlabel(r"${\rm WFC3\ offset\ (ppm)}$", fontsize=fs)
-ax = plt.axes([lhx+0.02+  dhx, 0.33 + dhy, dhx, dhy]) # TOP CEN
+plt.xticks(size=fs-1)
+ax = plt.axes([lhx+0.02+  dhx, 0.33 + dhy, dhx, dhy]) # Top center
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(pH2O, bins=nb)
 ax.set_xticks([-3, -2, -1, 0])
 plt.xlabel(r"$\log_{10}({\rm H2O})$", fontsize=fs)
-ax = plt.axes([lhx+0.02+  dhx, 0.18,       dhx, dhy]) # BOT CEN
+plt.xticks(size=fs-1)
+ax = plt.axes([lhx+0.02+  dhx, 0.18,       dhx, dhy]) # Bot center
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(pCH4, bins=nb)
 plt.xlim(hx[0], 0)
 ax.set_xticks([-10, -5, 0])
 plt.xlabel(r"$\log_{10}({\rm CH4})$", fontsize=fs)
-ax = plt.axes([lhx+0.04+2*dhx, 0.33 + dhy, dhx, dhy]) # TOP RIGHT
+plt.xticks(size=fs-1)
+ax = plt.axes([lhx+0.04+2*dhx, 0.33 + dhy, dhx, dhy]) # Top right
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(pCO, bins=nb)
 ax.set_xticks([-10, -5, 0])
 plt.xlabel(r"$\log_{10}({\rm CO})$", fontsize=fs)
-ax = plt.axes([lhx+0.04+2*dhx, 0.18,       dhx, dhy]) # BOT RIGHT
+plt.xticks(size=fs-1)
+ax = plt.axes([lhx+0.04+2*dhx, 0.18,       dhx, dhy]) # Bot right
 ax.set_yticklabels([""])
 ax.set_xticks([-15, -10, -5, 0])
 h, hx, patch = plt.hist(pCO2, bins=nb)
 ax.set_xlim(hx[0], 0)
 plt.xlabel(r"$\log_{10}({\rm CO2})$", fontsize=fs)
+plt.xticks(size=fs-1)
 
 plt.savefig("plots/HAT-P-11b_atmosphere.ps")
