@@ -8,8 +8,6 @@ import argparse, ConfigParser
 import numpy as np
 import scipy.constants as sc
 from mpi4py import MPI
-# EDIT:
-from scipy.ndimage.filters import gaussian_filter1d as gaussf
 
 import makeatm   as mat
 import PT        as pt
@@ -34,7 +32,7 @@ def main(comm):
   cparser = argparse.ArgumentParser(description=__doc__, add_help=False,
                          formatter_class=argparse.RawDescriptionHelpFormatter)
   # Add config file option:
-  cparser.add_argument("-c", "--config_file", 
+  cparser.add_argument("-c", "--config_file",
                        help="Configuration file", metavar="FILE")
   # Remaining_argv contains all other command-line-arguments:
   args, remaining_argv = cparser.parse_known_args()
@@ -49,9 +47,9 @@ def main(comm):
   else:
     defaults = {}
   parser = argparse.ArgumentParser(parents=[cparser])
-  parser.add_argument("--func",      dest="func",      type=mu.parray, 
+  parser.add_argument("--func",      dest="func",      type=mu.parray,
                                      action="store",  default=None)
-  parser.add_argument("--indparams", dest="indparams", type=mu.parray, 
+  parser.add_argument("--indparams", dest="indparams", type=mu.parray,
                                      action="store",   default=[])
   parser.add_argument("--params",    dest="params",    type=mu.parray,
                                      action="store",   default=None,
@@ -87,9 +85,9 @@ def main(comm):
                      dest="config", type=str,    default=None)
   # Output-Converter Options:
   group = parser.add_argument_group("Output Converter Options")
-  group.add_argument("--filter",                 action="store",
+  group.add_argument("--filters",                action="store",
                      help="Waveband filter name [default: %(default)s]",
-                     dest="filter",   type=mu.parray, default=None)
+                     dest="filters",  type=mu.parray, default=None)
   group.add_argument("--tep_name",          action="store",
                      help="A TEP file [default: %(default)s]",
                      dest="tep_name", type=str,    default=None)
@@ -124,6 +122,12 @@ def main(comm):
   Tmax     = args2.Tmax
   solution = args2.solution  # Solution type
 
+  # Dictionary of functions to calculate temperature for PTtype
+  PTfunc = {'iso'         : pt.PT_iso,
+            'line'        : pt.PT_line,
+            'madhu_noinv' : pt.PT_NoInversion,
+            'madhu_inv'   : pt.PT_Inversion}
+
   # Extract necessary values from the TEP file:
   tep = rd.File(tepfile)
   # Stellar temperature in K:
@@ -143,7 +147,7 @@ def main(comm):
   nradfit = int(solution == 'transit')  # 1 for transit, 0 for eclipse
   # EDIT:
   noffset = 1
-  nPT     = nfree - nmolfit - nradfit - noffset # Number of PT free parameters
+  nPT     = nfree - nmolfit - nradfit - noffset  # Number of PT free parameters
 
   # Read atmospheric file to get data arrays:
   species, pressure, temp, abundances = mat.readatm(atmfile)
@@ -160,19 +164,21 @@ def main(comm):
   # Get H2/He abundance ratio:
   ratio = (abundances[:,iH2] / abundances[:,iHe]).squeeze()
   # Find indices for the metals:
-  imetals = np.where((species != "He") & (species != "H2"))[0]
+  imetals = np.where((species != "He") & (species != "H2") & \
+                     (species != "H-") & (species != 'e-'))[0]
   # Index of molecular abundances being modified:
   imol = np.zeros(nmolfit, dtype='i')
   for i in np.arange(nmolfit):
     imol[i] = np.where(np.asarray(species) == molfit[i])[0]
 
   # Pressure-Temperature profile:
-  PTargs = [PTtype]
   if PTtype == "line":
     # Planetary surface gravity (in cm s-2):
     gplanet = 100.0 * sc.G * mplanet / rplanet**2
     # Additional PT arguments:
-    PTargs += [rstar, tstar, tint, sma, gplanet]
+    PTargs  = [rstar, tstar, tint, sma, gplanet]
+  else:
+    PTargs  = None
 
   # Allocate arrays for receiving and sending data to master:
   freepars = np.zeros(nfree,                 dtype='d')
@@ -189,7 +195,7 @@ def main(comm):
   # :::::::  Spawn transit code  :::::::::::::::::::::::::::::::::::::
   # # transit configuration file:
   transitcfile = args2.tconfig
- 
+
   # Initialize the transit python module:
   transit_args = ["transit", "-c", transitcfile]
   trm.transit_init(len(transit_args), transit_args)
@@ -199,8 +205,8 @@ def main(comm):
   specwn = trm.get_waveno_arr(nwave)
 
   # :::::::  Output Converter  :::::::::::::::::::::::::::::::::::::::
-  ffile    = args2.filter    # Filter files
-  kurucz   = args2.kurucz    # Kurucz file
+  ffile    = args2.filters    # Filter files
+  kurucz   = args2.kurucz     # Kurucz file
 
   # Log10(stellar gravity)
   gstar = float(tep.getvalue('loggstar')[0])
@@ -242,7 +248,6 @@ def main(comm):
 
   # EDIT:
   # Gaussian convolve to decrease the resolution:
-  sigma  = 42.0
   nWFC3  = 29    # Number of WFC3 points
 
   # ::::::  Main MCMC Loop  ::::::::::::::::::::::::::::::::::::::::::
@@ -259,7 +264,8 @@ def main(comm):
 
     # Input converter calculate the profiles:
     try:
-      tprofile[:] = pt.PT_generator(pressure, params[0:nPT], PTargs)[::-1]
+      tprofile[:] = pt.PT_generator(pressure,       params[0:nPT],
+                                    PTfunc[PTtype], PTargs       )[::-1]
     except ValueError:
       mu.msg(verb, 'Input parameters give non-physical profile.')
       # FINDME: what to do here?

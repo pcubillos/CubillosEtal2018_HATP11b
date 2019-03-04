@@ -9,8 +9,9 @@ bart=$topdir/BART/BART.py
 # Clone and compile the BART code:
 git clone --recursive https://github.com/exosports/BART BART/
 cd $topdir/BART
-git checkout b851e14
+git checkout d443869
 cd $topdir/BART/modules/transit
+git checkout acc70d0
 make
 cd $topdir/BART/modules/MCcubed
 make
@@ -139,7 +140,7 @@ cp $topdir/inputs/ancil/BARTfunc.py $topdir/BART/code/
 cp $topdir/inputs/ancil/bestFit.py  $topdir/BART/code/
 
 
-# Generate an atmospheric and opacity files
+# Generate atmospheric and opacity files
 cd $topdir/run07_HAT-P-11b_BART
 $bart -c BART_inputs.cfg --justOpacity
 

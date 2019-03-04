@@ -73,6 +73,8 @@ mol2, press2, temp2, abund2 = ma.readatm(
 bestp, bestu = bf.read_MCMC_out(root + "MCMC.log")
 # Best-fitting PT parameters:
 bestPT    = bestp[0:5]
+# Best-fit offset:
+offset = bestp[6]
 # Best-fitting Radius at 0.1 bar:
 bestrad   = bestp[5]
 # Best-fitting abundances: H2O CH4 CO CO2
@@ -80,7 +82,7 @@ bestabund = bestp[7:]
 
 sample = np.load(posterior)
 # Temperature posterior:
-burn = 3000
+burn = 8000
 p0 = sample[:,0,burn:].flatten()
 p1 = sample[:,1,burn:].flatten()
 p2 = sample[:,2,burn:].flatten()
@@ -88,23 +90,37 @@ p2 = sample[:,2,burn:].flatten()
 tb = np.zeros(len(press))
 Rs, Ts, sma, gstar = bf.get_starData("inputs/TEP/HAT-P-11b.tep")
 grav, Rp = ma.get_g("inputs/TEP/HAT-P-11b.tep")
-tb = pt.PT_line(press, bestPT, Rs, Ts, 100.0, sma, grav*100)
+kappa, gamma1, gamma2, alpha, beta = bestPT
+tb = pt.PT_line(press, kappa, gamma1, gamma2, alpha, beta,
+                Rs, Ts, 100.0, sma, grav*100)
 tprofiles = np.zeros((np.size(p0), len(press)))
 Tparams = np.array([-2.8,  -0.55, 1.0, 0.0, 0.965])
 
 for i in np.arange(np.size(p0)):
-  Tparams[0] = p0[i]
-  Tparams[1] = p1[i]
-  Tparams[4] = p2[i]
-  tprofiles[i] = pt.PT_line(press, Tparams, Rs, Ts, 100, sma, grav*100)
+  kappa  = p0[i]
+  gamma1 = p1[i]
+  beta   = p2[i]
+  tprofiles[i] = pt.PT_line(press, kappa, gamma1, gamma2, alpha, beta,
+                            Rs, Ts, 100, sma, grav*100)
   if (i+1)%int(np.size(p0)/10) == 0:
     print("{:.1f}%".format(i*100.0/np.size(p0)))
 
-low1 = np.percentile(tprofiles, 16,   axis=0)
-hi1  = np.percentile(tprofiles, 84,   axis=0)
-low2 = np.percentile(tprofiles,  2.5, axis=0)
-hi2  = np.percentile(tprofiles, 97.5, axis=0)
-median = np.median(tprofiles, axis=0)
+
+# Get percentiles (for 1,2-sigma boundaries):
+nlayers = len(press)
+low1 = np.zeros(nlayers)
+hi1  = np.zeros(nlayers)
+low2 = np.zeros(nlayers)
+hi2  = np.zeros(nlayers)
+median = np.zeros(nlayers)
+for j in np.arange(nlayers):
+    msample = tprofiles[:,j]#[uinv,j]
+    low1[j] = np.percentile(msample, 15.865)
+    low2[j] = np.percentile(msample,  2.275)
+    hi2 [j] = np.percentile(msample, 100- 2.275)
+    hi1 [j] = np.percentile(msample, 100-15.865)
+    median[j] = np.median(msample, axis=0)
+
 
 # Radius posterior at 0.1 bar:
 rad     = sample[:,3,burn:].flatten()
@@ -137,35 +153,32 @@ b.balance(na, imol, rat, irat)
 profiles = np.vstack((temp, na.T))
 tmp2 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
 
-tm.set_radius(29600.0)  # Solar
+# Solar
+tm.set_radius(29600.0)
 na = np.copy(abund2)
 rat, irat = b.ratio(na, imol)
 b.balance(na, imol, rat, irat)
-profiles = np.vstack((temp2, na.T))
+profiles = np.vstack((temp2*1.1, na.T))
 tmp3 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
 
-tcold = temp2*0.4
-tm.set_radius(29900.0)  # Cold
+# Cold
+tcold = temp2*0.5
+tm.set_radius(29800.0)
 na = np.copy(abund2)
 rat, irat = b.ratio(na, imol)
-na[:, 9] *= 10**0.0   # H2O
-na[:, 8] *= 10**0.0   # CH4
-na[:, 6] *= 10**0.0   # CO
-na[:, 7] *= 10**0.0   # CO2
 b.balance(na, imol, rat, irat)
 profiles = np.vstack((tcold, na.T))
 tmp4 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
-
-fs = 12
-lw = 1.5
-yran = 0.0031, 0.00385
 
 sigma = 6
 mod2 = gaussf(tmp2, sigma)  # Best
 mod3 = gaussf(tmp3, sigma)  # Solar
 mod4 = gaussf(tmp4, sigma)
 
-offset = 1.2142876e-04   # SET
+fs = 12
+lw = 1.25
+yran = 0.00305, 0.0037
+
 plt.figure(4, (8.5,3.5))
 plt.clf()
 plt.subplots_adjust(0.13, 0.15, 0.95, 0.95)
@@ -179,17 +192,18 @@ plt.errorbar(swlength, sdepth,      suncert, fmt="or", ms=5, elinewidth=lw,
              zorder=3, capthick=lw, label=r"${\rm Data}$")
 plt.plot(irac1_wl, 0.0001*irac1_tr + yran[0], color="0.5", lw=lw)
 plt.plot(irac2_wl, 0.0001*irac2_tr + yran[0], color="0.5", lw=lw)
-leg = plt.legend(loc="upper left", fontsize=fs-1)
+leg = plt.legend(loc="upper left", fontsize=fs-2)
 leg.get_frame().set_alpha(0.5)
 plt.xlabel(r"${\rm Wavelength\ \ (um)}$", fontsize=fs)
 plt.ylabel(r"$(R_p/R_s)^2$",              fontsize=fs)
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-ax.set_xticks([1, 2, 3, 4, 5])
+ax.set_xticks([1, 1.4, 2, 3, 4, 5])
+plt.gca().xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 plt.xlim(1.0, 5.5)
 plt.ylim(yran)
 plt.savefig("plots/HAT-P-11b_spectra.ps")
 
-fs = 11
+fs = 10
 lw = 1.5
 mname = ["", r"${\rm He}$", "", "", "", r"${\rm H}_2$",
        r"${\rm CO}$", r"${\rm CO}_2$", r"${\rm CH}_4$", r"${\rm H}_2{\rm O}$",
@@ -249,7 +263,7 @@ plt.xticks(size=fs-1)
 ax = plt.axes([lhx+0.02+  dhx, 0.33 + dhy, dhx, dhy]) # Top center
 ax.set_yticklabels([""])
 h, hx, patch = plt.hist(pH2O, bins=nb)
-ax.set_xticks([-3, -2, -1, 0])
+ax.set_xticks([-4, -3, -2, -1, 0])
 plt.xlabel(r"$\log_{10}({\rm H2O})$", fontsize=fs)
 plt.xticks(size=fs-1)
 ax = plt.axes([lhx+0.02+  dhx, 0.18,       dhx, dhy]) # Bot center

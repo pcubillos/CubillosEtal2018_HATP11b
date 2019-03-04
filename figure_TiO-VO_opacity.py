@@ -33,7 +33,7 @@ mass   = np.array([63.8664, 66.9409]) / sc.Avogadro
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Make plot:
 lw = 1.0
-fs = 18
+fs = 14
 matplotlib.rc('xtick', labelsize=fs-4)
 matplotlib.rc('ytick', labelsize=fs-4)
 color  = ["green", "darkorange"]
@@ -50,8 +50,8 @@ plt.semilogy(wl, data[r,t,1]*mass[1], color="darkorange", label=r"${\rm VO}$")
 plt.semilogy(wl, data[r,t,0]*mass[0], color="green",      label=r"${\rm TiO}$")
 plt.xlim(0.4, 1.5)
 plt.ylim(1e-22, 1e-15)
-plt.legend(loc="upper right")
-plt.xlabel(r"${\rm Wavelength\ \ (um)}$", fontsize=fs)
-plt.ylabel(r"${\rm Opacity\ \ (cm}^{2} {\rm molecule}^{-1})$", fontsize=fs)
+plt.legend(loc="upper right", fontsize=fs)
+plt.xlabel(r"Wavelength  (um)", fontsize=fs)
+plt.ylabel(r"Opacity  (cm$^{2}$ molecule$^{-1}$)", fontsize=fs)
 plt.savefig("plots/TiO-VO_opacity_10bar_2200K.ps")
 
