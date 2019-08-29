@@ -319,6 +319,7 @@ def main():
     atmfile = os.path.realpath(atmfile)
     shutil.copy2(atmfile, date_dir + os.path.basename(atmfile))
     mu.msg(1, "Atmospheric file copied from: '{:s}'.".format(atmfile),indent=2)
+    atmfile = os.path.basename(atmfile)
     runMCMC |= 8
   # Pre-atmospheric file:
   if os.path.isfile(preatm_file):
@@ -393,7 +394,7 @@ def main():
     mat.makeRadius(out_spec, date_dir+atmfile, abun_file, tep_name, refpress)
     mu.msg(1, "Added radius column to TEA atmospheric file.", indent=2)
     # Re-format file for use with transit:
-    mat.reformat(atmfile)
+    mat.reformat(date_dir+atmfile)
     mu.msg(1, "Atmospheric file reformatted for Transit.", indent=2)
 
   if justTEA:
@@ -442,7 +443,7 @@ def main():
   MCfile = date_dir + logfile
 
   # Call bestFit submodule: make new bestFit_tconfig.cfg, run best-fit Transit
-  bf.callTransit(atmfile, tep_name, MCfile,  stepsize, molfit,
+  bf.callTransit(date_dir+atmfile, tep_name, MCfile,  stepsize, molfit,
                  solution,         refpress, tconfig, date_dir, burnin,
                  abun_basic,       PTtype,   PTfunc[PTtype],    filters)
 
@@ -478,7 +479,7 @@ def main():
     ctf = cf.transmittance(date_dir, bestFit_atmfile, filters)
 
   # Make a plot of MCMC profiles with contribution functions/transmittance
-  bf.callTransit(atmfile, tep_name, MCfile,   stepsize, molfit,
+  bf.callTransit(date_dir+atmfile, tep_name, MCfile,   stepsize, molfit,
                  solution,         refpress, tconfig,  date_dir, burnin,
                  abun_basic,       PTtype,   PTfunc[PTtype],     filters,  ctf)
 

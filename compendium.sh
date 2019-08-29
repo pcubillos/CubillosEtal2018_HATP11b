@@ -9,9 +9,9 @@ bart=$topdir/BART/BART.py
 # Clone and compile the BART code:
 git clone --recursive https://github.com/exosports/BART BART/
 cd $topdir/BART
-git checkout d443869
+git checkout 85bdf19
 cd $topdir/BART/modules/transit
-git checkout acc70d0
+git checkout c96be51
 make
 cd $topdir/BART/modules/MCcubed
 make
@@ -118,18 +118,6 @@ cd $topdir/inputs/opacity/CH4
 wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITRAN2012/HITRAN2012/By-Molecule/Compressed-files/06_hit12.zip
 unzip 06_hit12.zip
 
-cd $topdir/inputs/opacity/NH3
-wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITRAN2012/HITRAN2012/By-Molecule/Compressed-files/11_hit12.zip
-unzip 11_hit12.zip
-
-cd $topdir/inputs/opacity/C2H2
-wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITRAN2012/HITRAN2012/By-Molecule/Compressed-files/26_hit12.zip
-unzip 26_hit12.zip
-
-cd $topdir/inputs/opacity/HCN
-wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITRAN2012/HITRAN2012/By-Molecule/Compressed-files/23_hit08.zip
-unzip 23_hit08.zip
-
 # Run pylineread:
 cd $topdir/run07_HAT-P-11b_BART
 $pyline -c pyline_hitran_1-5.5um.cfg
@@ -144,6 +132,9 @@ cp $topdir/inputs/ancil/bestFit.py  $topdir/BART/code/
 cd $topdir/run07_HAT-P-11b_BART
 $bart -c BART_inputs.cfg --justOpacity
 
+# Make atmfile with uniform abundances for H2O, CO, CO2, and CH4:
+cd $topdir
+python $topdir/inputs/ancil/make_uniform.py
 
 # Run BART
 cd $topdir/run07_HAT-P-11b_BART
