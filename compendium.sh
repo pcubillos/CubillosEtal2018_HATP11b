@@ -9,11 +9,12 @@ bart=$topdir/BART/BART.py
 # Clone and compile the BART code:
 git clone --recursive https://github.com/exosports/BART BART/
 cd $topdir/BART
-git checkout 85bdf19
+git checkout 862cb09
 cd $topdir/BART/modules/transit
-git checkout c96be51
+git checkout c698128
 make
 cd $topdir/BART/modules/MCcubed
+git checkout 7487a47
 make
 
 
@@ -30,12 +31,13 @@ wget http://kurucz.harvard.edu/molecules/h2o/h2opartfn.dat
 
 # Download the HITEMP CO opacity data:
 cd $topdir/inputs/opacity/CO
-wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITEMP-2010/CO_line_list/05_HITEMP2010.zip
-unzip 05_HITEMP2010.zip
+wget https://hitran.org/hitemp/data/bzip2format/05_HITEMP2019.par.bz2
+bzip2 -d 05_HITEMP2019.par.bz2
+
 
 # Download the HITEMP CO2 opacity data:
 cd $topdir/inputs/opacity/CO2
-wget --user=HITRAN --password=getdata -N -i wget_HITEMP_CO2.txt
+wget -i wget_HITEMP_CO2.txt
 unzip '*.zip'
 
 # Download the ExoMol CH4 data:
@@ -93,13 +95,23 @@ $transit -c Transit_CO2-HITEMP.cfg
 
 # Run Transit:
 cd $topdir/run05_CH4/
-$transit -c Transit_CH4-ExoMol.cfg
+#$transit -c Transit_CH4-ExoMol.cfg
+$pyline  -c pyline_CH4-repack_1-20um.cfg
+$transit -c Transit_HCN.cfg
 
 # Run Transit to produce a TiO-VO opacity file:
 cd $topdir/run06_TiO-VO/
 $pyline  -c pyline_TiO-VO_0.4-1.6um.cfg
 $transit -c Transit_TiO-VO.cfg --justOpacity
 
+# Run Transit:
+cd $topdir/run09_HCN/
+$pyline  -c pyline_HCN-repack_1-20um.cfg
+$transit -c Transit_HCN.cfg
+
+cd $topdir/run09_clouds
+$transit -c Transit_cloudy_HCN.cfg
+python figure_transmission.py
 
 # Figures 4, 5, and 6:
 cd $topdir
@@ -113,10 +125,11 @@ cd $topdir
 cd $topdir/inputs/opacity/H2O
 wget --user=HITRAN --password=getdata -N -i wget_HITEMP_H2O.txt
 unzip '*.zip'
+# FINDME: Replace this with exomol file
 
 cd $topdir/inputs/opacity/CH4
-wget --user=HITRAN --password=getdata -N https://www.cfa.harvard.edu/HITRAN/HITRAN2012/HITRAN2012/By-Molecule/Compressed-files/06_hit12.zip
-unzip 06_hit12.zip
+wget https://hitran.org/hitemp/data/bzip2format/06_HITEMP2020.par.bz2
+bzip2 -d 06_HITEMP2020.par.bz2
 
 # Run pylineread:
 cd $topdir/run07_HAT-P-11b_BART
@@ -139,6 +152,30 @@ python $topdir/inputs/ancil/make_uniform.py
 # Run BART
 cd $topdir/run07_HAT-P-11b_BART
 $bart -c BART_HAT-P-11b.cfg
+
+
+# :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Alternative run
+# Run pylineread:
+cd $topdir/run08_HAT-P-11b_BART
+$pyline -c pyline_hitemp_CH4_CO_CO2_exomol_H2O_0.34-5.5um.cfg
+
+# Modifications to the BART code to account for transit-depth offsets
+#cp $topdir/inputs/ancil/BART.py     $topdir/BART/
+#cp $topdir/inputs/ancil/BARTfunc.py $topdir/BART/code/
+#cp $topdir/inputs/ancil/bestFit.py  $topdir/BART/code/
+
+# Generate atmospheric and opacity files
+cd $topdir/run08_HAT-P-11b_BART
+$bart -c BART_inputs_fraine.cfg --justOpacity
+
+# Make atmfile with uniform abundances for H2O, CO, CO2, and CH4:
+cd $topdir
+python $topdir/inputs/ancil/make_uniform.py
+
+cd $topdir/run08_HAT-P-11b_BART
+$bart -c BART_HAT-P-11b.cfg
+
 
 # Figure 13:
 cd $topdir

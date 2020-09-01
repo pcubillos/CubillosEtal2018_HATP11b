@@ -9,7 +9,7 @@ planetname      HAT-P-11b     -1        -               -                       
 # Star
 startype         K4           -1        -               SIMBAD                  # S stellar class, e.g., G0V, no spaces
 Ts               4780         50        K               Bakos2010ApJ710:1724    # S stellar surface temperature
-Rs               0.75         0.02      Rsun            Bakos2010ApJ710:1724    # S stellar radius
+Rs               0.68         0.009     Rsun            Yee2018    # S stellar radius
 Kmag            7.009         0.020     -               SIMBAD                  # S stellar K magnitude
 FsSpitzCh1    474.92          -1        mJy             starpet                 # S stellar flux, IRAC1
 FsSpitzCh2    263.15          -1        mJy             starpet                 # S stellar flux, IRAC2
@@ -28,10 +28,10 @@ pmRA          127.20          0.83      mas/year        SIMBAD                  
 pmDEC         231.23          0.80      mas/year        SIMBAD                  # A proper motion in DEC
 
 # Planet (only one of Rp, RpRs, or RpRssq, give what you fit):
-Rp               0.422         0.014     Rjup            Bakos2010ApJ710:1724    # S planetary radius
+Rp               0.389         0.005     Rjup            Yee2018    # S planetary radius
 RpRs             0.0576        0.0009    -               Bakos2010ApJ710:1724    # S Rp/Rs if fit sep. from Rs and Rp
-RpRssq          -1            -1        -               -                        # S (Rp/Rs)^2 ditto
-Mp               0.081         0.009     Mjup            Bakos2010ApJ710:1724    #   planetary mass
+RpRssq          -1            -1         -               -                        # S (Rp/Rs)^2 ditto
+Mp               0.0736        0.0047    Mjup            Yee2018    #   planetary mass
 
 # Orbit - NEED UNCERTS on period, Ttrans, eclphase (or e and omega, or ecosomega and esinomega):
 period           4.8878162     0.0000071 days            Bakos2010ApJ710:1724    # A orbit period
