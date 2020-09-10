@@ -42,16 +42,17 @@ legend = ["TiO", "VO"]
 r = 0  # Index for 10 bar layer
 t = 0  # Index for 2200 K
 
-plt.figure(2, (8,4.5))
+plt.figure(2, (7.5, 4.5))
 plt.clf()
-plt.subplots_adjust(0.15, 0.12, 0.9, 0.95)
-ax= plt.subplot(111)
+plt.subplots_adjust(0.12, 0.12, 0.99, 0.95)
+ax = plt.subplot(111)
 plt.semilogy(wl, data[r,t,1]*mass[1], color="darkorange", label=r"${\rm VO}$")
 plt.semilogy(wl, data[r,t,0]*mass[0], color="green",      label=r"${\rm TiO}$")
 plt.xlim(0.4, 1.5)
 plt.ylim(1e-22, 1e-15)
+ax.tick_params(labelsize=fs-2)
 plt.legend(loc="upper right", fontsize=fs)
 plt.xlabel(r"Wavelength  (um)", fontsize=fs)
 plt.ylabel(r"Opacity  (cm$^{2}$ molecule$^{-1}$)", fontsize=fs)
-plt.savefig("plots/TiO-VO_opacity_10bar_2200K.ps")
+plt.savefig("plots/TiO-VO_opacity_10bar_2200K.pdf")
 

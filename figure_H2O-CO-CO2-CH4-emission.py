@@ -1,12 +1,9 @@
 #! /usr/bin/env python
 
-import os
 import sys
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.constants as sc
-import scipy.ndimage.filters as sf
 from scipy.ndimage.filters import gaussian_filter1d as gaussf
 
 sys.path.append("BART/modules/transit/scripts")
@@ -18,7 +15,6 @@ import blackbody as bb
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Read Transit spectra:
-wl, flux_CIA = rt.readspectrum("run02_H2O/emission_CIA_1-20um.dat", 0)
 wl, flux_H2O = rt.readspectrum("run02_H2O/emission_H2O-pands_1-20um.dat", 0)
 wl, flux_CO  = rt.readspectrum("run03_CO/emission_CO-HITEMP_1-20um.dat",  0)
 wl, flux_CO2 = rt.readspectrum("run04_CO2/emission_CO2-HITEMP_1-20um.dat", 0)
@@ -63,7 +59,6 @@ Ftop      = np.pi * bb.Bwn(wn,   1089.33) * 1e5
 Fbot      = np.pi * bb.Bwn(wn,   1619.32) * 1e5
 
 sigma = 1.25
-tfr_CIA = gaussf(flux_CIA/Fstar *     (Rjup/Rsun)**2*1e3, sigma)
 
 tfr_H2O = gaussf(flux_H2O/Fstar *     (Rjup/Rsun)**2*1e3, sigma)
 mfr_H2O = gaussf(mdata[1]/Fstar_mor * (Rjup/Rsun)**2*1e3, sigma)
@@ -76,6 +71,7 @@ mfr_CO2 = gaussf(mdata[3]/Fstar_mor * (Rjup/Rsun)**2*1e3, sigma)
 
 tfr_CH4 = gaussf(flux_CH4/Fstar *     (Rjup/Rsun)**2*1e3, sigma)
 mfr_CH4 = gaussf(mdata[4]/Fstar_mor * (Rjup/Rsun)**2*1e3, sigma)
+
 
 fr_top = Ftop/Fstar * (Rjup/Rsun)**2*1e3
 fr_bot = Fbot/Fstar * (Rjup/Rsun)**2*1e3
@@ -91,57 +87,53 @@ fs = 18
 matplotlib.rc('xtick', labelsize=fs-3)
 matplotlib.rc('ytick', labelsize=fs-3)
 
-plt.figure(-22, (8, 10))
+plt.figure(-22, (7.5, 10))
 plt.clf()
-plt.subplots_adjust(0.15, 0.08, 0.9, 0.98, hspace=0.0,wspace=0.0)
+plt.subplots_adjust(0.12, 0.07, 0.98, 0.99, hspace=0.0,wspace=0.0)
 ax = plt.subplot(411)  # H2O
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
-#plt.semilogx(wl, tfr_CIA, 'limegreen', lw=1.0, alpha=1.0, label="CIA")
 plt.semilogx(wl_mor, mfr_H2O, color[0], lw=lw, alpha=1.0,
-             label=r"${\rm Morley}$")
-plt.semilogx(wl,     tfr_H2O, color[1], lw=lw, alpha=alpha,
-             label=r"${\rm Transit}$")
-ax.set_xticklabels([""])
+    label=r"Morley")
+plt.semilogx(wl, tfr_H2O, color[1], lw=lw, alpha=alpha,
+    label=r"Transit code")
+ax.set_xticklabels([])
 plt.xlim(xran)
 plt.ylim(yran)
-plt.text(15, 0.2, r"${\rm H}_2{\rm O}$", fontsize=fs)
+plt.text(15, 0.2, r"H$_2$O", fontsize=fs)
 plt.legend(loc="upper left", fontsize=fs-2)
-plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}$  (ppt)", fontsize=fs)
 ax = plt.subplot(412)  # CO
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
-#plt.semilogx(wl, tfr_CIA, 'limegreen', lw=1.0, alpha=1.0, label="CIA")
 plt.semilogx(wl_mor, mfr_CO,  color[0], lw=lw, alpha=1.0)
-plt.semilogx(wl,     tfr_CO,  color[1], lw=lw, alpha=alpha)
-ax.set_xticklabels([""])
+plt.semilogx(wl, tfr_CO,  color[1], lw=lw, alpha=alpha)
+ax.set_xticklabels([])
 plt.xlim(xran)
 plt.ylim(yran)
 plt.text(15, 0.2, r"${\rm CO}$", fontsize=fs)
-plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}$  (ppt)", fontsize=fs)
 ax = plt.subplot(413)  # CO2
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
-#plt.semilogx(wl, tfr_CIA, 'limegreen', lw=1.0, alpha=1.0, label="CIA")
 plt.semilogx(wl_mor, mfr_CO2, color[0], lw=lw, alpha=1.0)
-plt.semilogx(wl,     tfr_CO2, color[1], lw=lw, alpha=alpha)
-ax.set_xticklabels([""])
+plt.semilogx(wl, tfr_CO2, color[1], lw=lw, alpha=alpha)
+ax.set_xticklabels([])
 plt.xlim(xran)
 plt.ylim(yran)
-plt.text(15, 0.2, r"${\rm CO}_2$", fontsize=fs)
-plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
+plt.text(15, 0.2, r"CO$_2$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}$  (ppt)", fontsize=fs)
 ax = plt.subplot(414)  # CH4
 plt.semilogx(wl, fr_top, "--", color="0.5", lw=lw)
 plt.semilogx(wl, fr_bot, "--", color="0.5", lw=lw)
-#plt.semilogx(wl, tfr_CIA, 'limegreen', lw=1.0, alpha=1.0, label="CIA")
 plt.semilogx(wl_mor, mfr_CH4,  color[0], lw=lw, alpha=1.0)
-plt.semilogx(wl,     tfr_CH4,  color[1], lw=lw, alpha=alpha)
+plt.semilogx(wl, tfr_CH4,  color[1], lw=lw, alpha=alpha)
 plt.xlim(xran)
 plt.ylim(yran)
-plt.text(15, 0.2, r"${\rm CH}_4}$", fontsize=fs)
-plt.ylabel(r"$F_{\rm p}/F_{\rm s}\ \ (\times 10^{-3})$", fontsize=fs)
-plt.xlabel(r"${\rm Wavelength\ \ (um)}$", fontsize=fs)
+plt.text(15, 0.2, r"CH$_4$", fontsize=fs)
+plt.ylabel(r"$F_{\rm p}/F_{\rm s}$  (ppt)", fontsize=fs)
+plt.xlabel(r"Wavelength (um)", fontsize=fs)
 
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 ax.set_xticks([1, 2, 3, 5, 10, 20])
-plt.savefig("plots/emission_H2O-CO-CO2-CH4.ps")
+plt.savefig("plots/emission_H2O-CO-CO2-CH4.pdf")

@@ -47,10 +47,11 @@ fs = 18
 matplotlib.rc('xtick', labelsize=fs-4)
 matplotlib.rc('ytick', labelsize=fs-4)
 
+
 # Emission spectra side-by-side:
 plt.figure(1, (8,4.5))
 plt.clf()
-plt.subplots_adjust(0.15, 0.12, 0.9, 0.95)
+plt.subplots_adjust(0.14, 0.14, 0.97, 0.98)
 ax = plt.subplot(111)
 #plt.plot(wl_mor, CIA_mor, "darkorange", lw=lw, label="Morley")
 plt.plot(wl_mor, CIA_mor, "darkorange", lw=3.5, label=r"${\rm Morley}$")
@@ -62,11 +63,12 @@ plt.ylim(0, 65000)
 plt.xlabel(r"${\rm Wavelength\ \ (um)}$", fontsize=fs)
 plt.ylabel(r"${\rm Day-side\ flux\ \ (ergs\ s}^{-1}{\rm cm}^{-1})$",
            fontsize=fs)
-ax = plt.axes([0.67, 0.43, 0.20, 0.48])
+ax = plt.axes([0.72, 0.45, 0.23, 0.52])
 plt.semilogy(temp, press, "r", lw=2)
 plt.ylim(press[0], press[-1])
 ax.set_xticks([1000, 1300, 1600])
 ax.set_yticks([1e2, 1, 1e-2, 1e-4])
 plt.xlabel(r"${\rm Temperature\ \ (K)}$", fontsize=fs-1)
 plt.ylabel(r"${\rm Pressure\ \ (bar)}$",  fontsize=fs-1)
-plt.savefig("plots/CIA_emission_spectra_1-20um.ps")
+plt.savefig("plots/CIA_emission_spectra_1-20um.pdf")
+
