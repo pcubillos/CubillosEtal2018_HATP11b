@@ -18,7 +18,7 @@ import blackbody as bb
 wl, flux_H2O = rt.readspectrum("run02_H2O/emission_H2O-pands_1-20um.dat", 0)
 wl, flux_CO  = rt.readspectrum("run03_CO/emission_CO-HITEMP_1-20um.dat",  0)
 wl, flux_CO2 = rt.readspectrum("run04_CO2/emission_CO2-HITEMP_1-20um.dat", 0)
-wl, flux_CH4 = rt.readspectrum("run05_CH4/emission_CH4-ExoMol_1-20um.dat", 0)
+wl, flux_CH4 = rt.readspectrum("run05_CH4/emission_CH4-ExoMol_repack_1-20um.dat", 0)
 
 # Read Morley's CIA spectrum:
 mfiles = ["inputs/Morley/h2he.spec",    "inputs/Morley/h2o_h2he.spec",

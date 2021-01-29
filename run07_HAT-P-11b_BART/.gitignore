@@ -1,8 +1,9 @@
-# Ignore all of these files in this directory
-*
+# Ignore all of these files in this directory:
+atmosphere_HAT-P-11b_uniform.atm
+HITEMP_CH4_CO_CO2_Exomol_H2O_0.34-5.5um.tli
+inputs_fraine/
+retrieval_fraine/
+inputs_chachan/
+retrieval_chachan_hst/
+retrieval_chachan_all/
 
-# Except this file
-!.gitignore
-!pyline_hitran_1-5.5um.cfg
-!BART_inputs.cfg
-!BART_HAT-P-11b.cfg
