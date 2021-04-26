@@ -8,4 +8,3 @@ git clone https://github.com/pcubillos/CubillosEtal2021_HATP11b
 ```
 Then, follow the commands in '**compendium.sh**'.  This Shell script contains all necessary instructions to reproduce the analysis and figures of this manuscript.
 
-The Bayesian Atmospheric Radiative Transfer (BART) code is located at https://github.com/exosports/BART

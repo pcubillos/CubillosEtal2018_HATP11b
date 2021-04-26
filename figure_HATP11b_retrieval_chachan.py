@@ -16,6 +16,8 @@ import wine as w
 import bestFit as bf
 sys.path.append("./inputs/ancil")
 import balance as b
+matplotlib.use('tkagg')
+
 
 # Fraine data:
 fraine_wl = np.array([
@@ -124,11 +126,7 @@ filters = [
 
 # Retrieval outputs from local run:
 root = "./run07_HAT-P-11b_BART/retrieval_chachan_all/"
-
 besttcfg  = root + "bestFit_tconfig.cfg"  # Transit cfg file
-bestatm   = root + "bestFit.atm"          # Atmospheric file
-bestmcmc  = root + "MCMC.log"             # MCMC log file
-posterior = root + "output.npy"
 
 # Transit configuration file for best-fit:
 args = ["transit", "-c", besttcfg]
@@ -152,15 +150,12 @@ irac1_tr /= np.amax(irac1_tr)
 irac2_tr /= np.amax(irac2_tr)
 irac1_wl, irac2_wl = 1e4/filter_wn[-2], 1e4/filter_wn[-1]
 
-# Best-fit atmosphere:
-mol, press, temp_best, abund_best = ma.readatm(bestatm)
-# Initial guess:
-mol, press, temp_init, abund_init = ma.readatm(
+# atmospheric model:
+mol, press, temp, abund_init = ma.readatm(
     root + "atmosphere_HAT-P-11b_uniform.atm")
-mol, press, temp_solar, abund_solar = ma.readatm(
-    "./run07_HAT-P-11b_BART/inputs_chachan/atmosphe_HAT-P-11b.atm")
 
-bestp_all, bestu_all = bf.read_MCMC_out(root + "MCMC_chachan_all.log")
+bestp_all, bestu_all = bf.read_MCMC_out(
+    "./run07_HAT-P-11b_BART/retrieval_chachan_all/MCMC_chachan_all.log")
 bestT_all, bestrad_all, bestcl_all, bestray_all = bestp_all[0:4]
 bestabund_all = bestp_all[5:]
 
@@ -169,69 +164,60 @@ bestp_hst, bestu_hst = bf.read_MCMC_out(
 bestT_hst, bestrad_hst, bestcl_hst, bestray_hst = bestp_hst[0:4]
 bestabund_hst = bestp_hst[5:]
 
-
 # Initialize stuff:
 imol = [0,1]
 na = np.copy(abund_init)
 rat, irat = b.ratio(na, imol)
-profiles = np.vstack((temp_best, abund_init.T))
+profiles = np.vstack((temp, abund_init.T))
 
 # Best (HST + Spitzer):
-temp_best[:] = bestT_all
+temp[:] = bestT_all
 tm.set_radius(bestrad_all)
 tm.set_cloudtop(bestcl_all)
 tm.set_scattering(bestray_all)
 na = np.copy(abund_init)
 rat, irat = b.ratio(na, imol)
-na[:, 5] *= 10**bestabund_all[0]
-na[:, 4] *= 10**bestabund_all[1]
-na[:, 2] *= 10**bestabund_all[2]
-na[:, 3] *= 10**bestabund_all[3]
+na[:, 2:] *= 10**bestabund_all
 b.balance(na, imol, rat, irat)
-profiles = np.vstack((temp_best, na.T))
-tmp2 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
+profiles = np.vstack((temp, na.T))
+best_spectrum_all = tm.run_transit(profiles.flatten(), tm.get_no_samples())
 
 # Best (HST):
-temp_best[:] = bestT_hst
+temp[:] = bestT_hst
 tm.set_radius(bestrad_hst)
 tm.set_cloudtop(bestcl_hst)
 tm.set_scattering(bestray_hst)
 na = np.copy(abund_init)
 rat, irat = b.ratio(na, imol)
-na[:, 5] *= 10**bestabund_hst[0]
-na[:, 4] *= 10**bestabund_hst[1]
-# Ignore CO/CO2, which are not constrained
-#na[:, 2] *= 10**bestabund_hst[2]
-#na[:, 3] *= 10**bestabund_hst[3]
+na[:, 2:] *= 10**bestabund_hst
 b.balance(na, imol, rat, irat)
-profiles = np.vstack((temp_best, na.T))
-tmp3 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
+profiles = np.vstack((temp, na.T))
+best_spectrum_hst = tm.run_transit(profiles.flatten(), tm.get_no_samples())
 
 sigma = 6
-mod2 = gaussf(tmp2, sigma)  # Best
-mod3 = gaussf(tmp3, sigma)  # Solar
+mod_all = gaussf(best_spectrum_all, sigma)  # Best
+mod_hst = gaussf(best_spectrum_hst, sigma)  # Solar
 
 band_all = np.array([
-    w.bandintegrate(tmp2[wnidx], wn, ifl, wnidx)
+    w.bandintegrate(best_spectrum_all[wnidx], wn, ifl, wnidx)
     for ifl,wnidx in zip(filter_interp, filter_idx)])
 band_hst = np.array([
-    w.bandintegrate(tmp3[wnidx], wn, ifl, wnidx)
+    w.bandintegrate(best_spectrum_hst[wnidx], wn, ifl, wnidx)
     for ifl,wnidx in zip(filter_interp, filter_idx)])
 
 
 fs = 12
 lw = 1.0
 f = 1e6  # ppm
-yran = f*np.array([0.00294, 0.00374])
-yran = f*np.array([0.00294, 0.00405])
+yran = f*np.array([0.00294, 0.00406])
 
 plt.figure(4, (8.5,3.5))
 plt.clf()
 plt.subplots_adjust(0.10, 0.15, 0.99, 0.98)
 ax = plt.subplot(111)
 
-plt.semilogx(wl, f*mod3, c="cornflowerblue", lw=lw, label="HST")
-plt.semilogx(wl, f*mod2, c="salmon", lw=lw, label="HST + Spitzer")
+plt.semilogx(wl, f*mod_hst, c="cornflowerblue", lw=lw, label="HST")
+plt.semilogx(wl, f*mod_all, c="salmon", lw=lw, label="HST + Spitzer")
 plt.plot(chachan_wl[-2:], f*band_hst[-2:], "o", ms=4, c='blue', zorder=3)
 plt.plot(chachan_wl[-2:], f*band_all[-2:], "o", ms=4, c='red', zorder=3)
 
@@ -244,7 +230,6 @@ plt.errorbar(fraine_wl, f*fraine_depth, f*fraine_uncert, fmt="o", ms=4,
 plt.plot(irac1_wl, 100*irac1_tr + yran[0], color="0.5", lw=lw)
 plt.plot(irac2_wl, 100*irac2_tr + yran[0], color="0.5", lw=lw)
 leg = plt.legend(loc="upper left", fontsize=fs-2)
-#leg.get_frame().set_alpha(0.5)
 plt.xlabel(r"Wavelength (um)", fontsize=fs)
 plt.ylabel(r"$(R_{\rm p}/R_{\rm s})^2$ (ppm)", fontsize=fs)
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -266,7 +251,7 @@ rsun = 6.96e8
 
 burn = 8000
 
-sample_all = np.load(root + "output.npy")
+sample_all = np.load("run07_HAT-P-11b_BART/retrieval_chachan_all/output.npy")
 temp_all  = sample_all[:,itemp,burn:].flatten()
 cloud_all = sample_all[:,icloud,burn:].flatten()
 ray_all   = sample_all[:,iray,burn:].flatten()
@@ -295,11 +280,31 @@ posterior_hst = np.vstack([
     temp_hst, rad_hst, cloud_hst, ray_hst,
     H2O_hst, CH4_hst, CO_hst, CO2_hst]).T
 
+median_pars_all = np.median(posterior_all, axis=0)
+plow_all = np.percentile(posterior_all, 15.865, axis=0)
+phigh_all = np.percentile(posterior_all, 84.135, axis=0)
+
+median_pars_hst = np.median(posterior_hst, axis=0)
+plow_hst = np.percentile(posterior_hst, 15.865, axis=0)
+phigh_hst = np.percentile(posterior_hst, 84.135, axis=0)
+
+dec = [0, 2, 1, 1, 1, 1, 1, 1]
+for hmed,hlo,hhi, amed,alo,ahi, d in zip(
+        median_pars_hst, plow_hst, phigh_hst,
+        median_pars_all, plow_all, phigh_all, dec):
+    hlow = hmed-hlo
+    hhigh = hhi-hmed
+    alow = amed-alo
+    ahigh = ahi-amed
+    print(f'${hmed:.{d}f}_{{-{hlow:.{d}f}}}^{{+{hhigh:.{d}f}}}$  &  '
+          f'${amed:.{d}f}_{{-{alow:.{d}f}}}^{{+{ahigh:.{d}f}}}$')
+
+
 pnames = [
     r"$T$ (K)",
     r"$R_{\rm p}$ ($R_{\oplus}$)",
     r"$\log_{10}(\frac{P_{\rm cloud}}{{\rm bar}})$",
-    r"$\log_{10}({\rm Ray})$",
+    r"$\log_{10}(\kappa_{\rm ray})$",
     r"$\log_{10}({\rm H2O})$",
     r"$\log_{10}({\rm CH4})$",
     r"$\log_{10}({\rm CO})$",
@@ -309,10 +314,9 @@ pnames = [
 nsamples, npars = np.shape(posterior_all)
 
 ranges = [
-    [500, 2000], [3.6, 4.6], [-5, 0.5], [-30,-20],
+    [500, 2000], [3.6, 4.6], [-5.0, 0.5], [-5.0,5.0],
     [-6, 0], [-10,0], [-10,0], [-10,0]]
 
-#palette = copy.copy(plt.cm.YlOrRd)
 palette = copy.copy(plt.cm.RdPu)
 palette.set_under(color='w')
 palette.set_bad(color='w')
@@ -326,18 +330,83 @@ for irow in range(1, npars):
         if ranges[icol] is not None:
             ran = [ranges[icol], ranges[irow]]
         h, x, y = np.histogram2d(posterior_all[:,icol], posterior_all[:,irow],
-            bins=16, range=ran) #, **histkeys)
+            bins=16, range=ran)
         h2,x2,y2= np.histogram2d(posterior_hst[:,icol], posterior_hst[:,irow],
-            bins=16, range=ran) #, **histkeys)
+            bins=16, range=ran)
         hist.append(h.T)
         hist2.append(h2.T)
         xran.append(x)
         yran.append(y)
         lmax.append(np.amax(h)+1)
 
+# Mean molecular masses:
+Zsun = 0.0134
+Xsun = 0.7381
+QX_over_QY = 0.85/0.15  # By volume
+
+species = ['H2', 'He', 'H2O', 'CO', 'CO2', 'CH4']
+nspec = len(species)
+mass = np.array([2.01588, 4.002602, 18.01528, 28.0101, 44.0095, 16.0425])
+H_mass = 1.00794
+He_mass = mass[1]
+
+nq = 1000
+q = np.zeros((3,nq))
+q[2] = np.logspace(-6, 0, nq)
+q[1] = (1-q[2]) / (1.0 + QX_over_QY)
+q[0] = QX_over_QY * q[1]
+mu = np.sum(q*np.expand_dims([2.01588, 4.002602, 18.01528],axis=1),axis=0)
+y = q[1] * He_mass
+x = H_mass * 2.0 * (q[0] + q[2])
+z = mu - x - y
+mass_fraction = np.log10(z/x / (Zsun/Xsun))
+mu_ticks = 2.32, 5.0
+mf_ticks = [mass_fraction[mu>=mu_tick][0] for mu_tick in mu_ticks]
+
+
+u_hst, uind_hst, uinv_hst = np.unique(
+    H2O_hst, return_index=True, return_inverse=True)
+nunique_hst = len(u_hst)
+
+Q_hst = np.zeros((nspec, nunique_hst))
+Q_hst[2] = 10**H2O_hst[uind_hst]
+Q_hst[3] = 10**CO_hst[uind_hst]
+Q_hst[4] = 10**CO2_hst[uind_hst]
+Q_hst[5] = 10**CH4_hst[uind_hst]
+Q_hst[1] = (1-np.sum(Q_hst[2:], axis=0)) / (1.0 + QX_over_QY)
+Q_hst[0] = QX_over_QY * Q_hst[1]
+
+# Mass fractions:
+mu_hst = np.sum(Q_hst * np.expand_dims(mass,axis=1), axis=0)
+Y_hst = Q_hst[1] * He_mass
+X_hst = H_mass * (2*Q_hst[0] + 2*Q_hst[2] + 4*Q_hst[5])
+Z_hst = mu_hst - X_hst - Y_hst
+mass_fraction_hst = np.log10(Z_hst/X_hst / (Zsun/Xsun))
+
+
+u_all, uind_all, uinv_all = np.unique(
+    H2O_all, return_index=True, return_inverse=True)
+nunique_all = len(u_all)
+
+Q_all = np.zeros((nspec,nunique_all))
+Q_all[2] = 10**H2O_all[uind_all]
+Q_all[3] = 10**CO_all[uind_all]
+Q_all[4] = 10**CO2_all[uind_all]
+Q_all[5] = 10**CH4_all[uind_all]
+Q_all[1] = (1-np.sum(Q_all[2:], axis=0)) / (1.0 + QX_over_QY)
+Q_all[0] = QX_over_QY * Q_all[1]
+
+# Mass fractions:
+mu_all = np.sum(Q_all*np.expand_dims(mass,axis=1), axis=0)
+Y_all = Q_all[1] * He_mass
+X_all = H_mass * (2*Q_all[0] + 2*Q_all[2] + 4*Q_all[5])
+Z_all = mu_all - X_all - Y_all
+mass_fraction_all = np.log10(Z_all/X_all / (Zsun/Xsun))
+
 # Plot:
 nlevels = 20
 fs = 11
+
 
 plt.figure(201, figsize=(8.5,8.5))
 plt.clf()
@@ -364,7 +433,7 @@ for irow in range(1, npars):
         xx = 0.5*(xran[k][:-1] + xran[k][1:])
         yy = 0.5*(yran[k][:-1] + yran[k][1:])
         X, Y = np.meshgrid(xx, yy)
-        CS = ax.contour(X, Y, hist2[k],# cmap=plt.cm.Blues,
+        CS = ax.contour(X, Y, hist2[k],
             levels=3,
             linewidths=1.0, colors=plt.cm.Blues(np.linspace(0.3, 0.9, 4)))
         for c in cont.collections:
@@ -382,23 +451,46 @@ for i in range(npars):
     ax = plt.subplot(npars, npars, h)
     ax.tick_params(labelsize=fs-1, direction='in')
     ax.set_yticks([])
-    h, hx, patch = plt.hist(posterior_hst[:,i], bins=nb, range=ranges[i],
+    h, hx, patch = plt.hist(
+        posterior_hst[:,i], bins=nb, range=ranges[i], histtype='stepfilled',
         color='cornflowerblue', label='Chachan: HST')
-    h, hx, patch = plt.hist(posterior_all[:,i], bins=nb, range=ranges[i],
+    h, hx, patch = plt.hist(
+        posterior_all[:,i], bins=nb, range=ranges[i], histtype='stepfilled',
         color='salmon', alpha=0.7, label='Chachan: HST+Spitzer')
     ax.set_xlim(ranges[i])
+    ax.axvline(median_pars_hst[i], color='b', lw=1.5, dashes=())
+    ax.axvline(median_pars_all[i], color='r', lw=1.5, dashes=())
     if i != npars-1:
         ax.set_xticklabels("")
     else:
         plt.xlabel(pnames[i], fontsize=fs)
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     if i == 0:
-        plt.legend(loc=(1.1, 0.45))
+        plt.legend(loc=(1.1, 0.45), fontsize=fs)
+
+# Mean molecular mass histogram:
+ax = plt.subplot(npars, npars, 14)
+ax.hist(
+    mass_fraction_hst[uinv_hst], bins=nb,
+    histtype='stepfilled', color='cornflowerblue')
+ax.hist(
+    mass_fraction_all[uinv_all], bins=nb,
+    histtype='stepfilled', color='salmon', alpha=0.7)
+ax.set_xlabel('$[M_Z/M_X]$', size=fs)
+ax.set_yticks([])
+ax.axvline(np.median(mass_fraction_hst[uinv_hst]), color='b', lw=1.5)
+ax.axvline(np.median(mass_fraction_all[uinv_all]), color='r', lw=1.5)
+ax.set_xlim(-2.6, 2.6)
+ax2 = ax.twiny()
+ax2.set_xlim(ax.get_xlim())
+ax2.set_xticks(mf_ticks)
+ax2.set_xticklabels(mu_ticks)
+ax2.set_xlabel('Mean molecular mass', fontsize=fs)
 
 # The colorbar:
 bounds = np.linspace(0, 1.0, nlevels)
 norm = matplotlib.colors.BoundaryNorm(bounds, palette.N)
-ax2 = plt.axes([0.85, 0.57, 0.025, 0.36])
+ax2 = plt.axes([0.94, 0.63, 0.025, 0.36])
 cb = matplotlib.colorbar.ColorbarBase(ax2, cmap=palette, norm=norm,
     spacing='proportional', boundaries=bounds, format='%.1f')
 cb.set_label("Normalized Point Density", fontsize=fs)
@@ -408,8 +500,7 @@ cb.ax.tick_params(labelsize=fs-1)
 cb.set_ticks(np.linspace(0, 1, 5))
 for c in ax2.collections:
     c.set_edgecolor("face")
-#
-ax3 = plt.axes([0.875, 0.57, 0.025, 0.36])
+ax3 = plt.axes([0.965, 0.63, 0.025, 0.36])
 xx = np.linspace(0, 1, 100)
 X, Y = np.meshgrid(xx, xx)
 ax3.contourf(X, Y, Y, levels=3,

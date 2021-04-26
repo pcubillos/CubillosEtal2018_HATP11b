@@ -16,6 +16,8 @@ import wine as w
 import bestFit as bf
 sys.path.append("./inputs/ancil")
 import balance as b
+matplotlib.use('tkagg')
+
 
 # Fraine data:
 fraine_wl = np.array([
@@ -105,13 +107,11 @@ filters = [
     'BART/inputs/filters/spitzer_irac2_sa.dat',
     ]
 
+
+
 # Retrieval outputs from local run:
 root = "./run07_HAT-P-11b_BART/retrieval_fraine/"
-
-besttcfg  = root + "bestFit_tconfig.cfg"  # Transit cfg file
-bestatm   = root + "bestFit.atm"          # Atmospheric file
-bestmcmc  = root + "MCMC.log"             # MCMC log file
-posterior = root + "output.npy"
+besttcfg = root + "bestFit_tconfig.cfg"  # Transit cfg file
 
 # Transit configuration file for best-fit:
 args = ["transit", "-c", besttcfg]
@@ -135,13 +135,9 @@ irac1_tr /= np.amax(irac1_tr)
 irac2_tr /= np.amax(irac2_tr)
 irac1_wl, irac2_wl = 1e4/filter_wn[-2], 1e4/filter_wn[-1]
 
-# Best-fit atmosphere:
-mol, press, temp_best, abund_best = ma.readatm(bestatm)
 # Initial guess:
-mol, press, temp_init, abund_init = ma.readatm(
+mol, press, temp, abund_init = ma.readatm(
     root + "atmosphere_HAT-P-11b_uniform.atm")
-mol, press, temp_solar, abund_solar = ma.readatm(
-    "./run07_HAT-P-11b_BART/inputs_fraine/atmosphe_HAT-P-11b.atm")
 
 bestp, bestu = bf.read_MCMC_out(root + "MCMC_fraine.log")
 bestT, bestrad, bestcl, bestoff = bestp[0:4]
@@ -152,20 +148,17 @@ bestabund = bestp[4:]
 imol = [0,1]
 na = np.copy(abund_init)
 rat, irat = b.ratio(na, imol)
-profiles = np.vstack((temp_best, abund_init.T))
+profiles = np.vstack((temp, abund_init.T))
 
 # Best (HST + Spitzer):
-temp_best[:] = bestT
+temp[:] = bestT
 tm.set_radius(bestrad)
 tm.set_cloudtop(bestcl)
 na = np.copy(abund_init)
 rat, irat = b.ratio(na, imol)
-na[:, 5] *= 10**bestabund[0]
-na[:, 4] *= 10**bestabund[1]
-na[:, 2] *= 10**bestabund[2]
-na[:, 3] *= 10**bestabund[3]
+na[:, 2:] *= 10**bestabund
 b.balance(na, imol, rat, irat)
-profiles = np.vstack((temp_best, na.T))
+profiles = np.vstack((temp, na.T))
 tmp2 = tm.run_transit(profiles.flatten(), tm.get_no_samples())
 
 sigma = 6
@@ -178,7 +171,7 @@ band = np.array([
 fs = 12
 lw = 1.0
 f = 1e6  # ppm
-yran = f*np.array([0.00315, 0.00368])
+ylim = f*np.array([0.00308, 0.00363])
 fdepth = np.copy(fraine_depth)
 cdepth = np.copy(chachan_depth)
 fdepth[:-2] -= bestoff
@@ -199,8 +192,8 @@ plt.errorbar(chachan_wl, f*cdepth, f*chachan_uncert, fmt="o", ms=4,
     color='0.7', elinewidth=lw, zorder=0, capthick=lw,
     label='Chachan et al. (2019)')
 
-plt.plot(irac1_wl, 60*irac1_tr + yran[0], color="0.5", lw=lw)
-plt.plot(irac2_wl, 60*irac2_tr + yran[0], color="0.5", lw=lw)
+plt.plot(irac1_wl, 60*irac1_tr + ylim[0], color="0.5", lw=lw)
+plt.plot(irac2_wl, 60*irac2_tr + ylim[0], color="0.5", lw=lw)
 leg = plt.legend(loc="upper left", fontsize=fs-2)
 #leg.get_frame().set_alpha(0.5)
 plt.xlabel(r"Wavelength (um)", fontsize=fs)
@@ -209,7 +202,7 @@ ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 ax.set_xticks([1.0, 1.4, 2, 3, 4.0, 5.0])
 plt.gca().xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 plt.xlim(1.0, 5.5)
-plt.ylim(yran)
+plt.ylim(ylim)
 plt.savefig("plots/HATP11b_spectra_fraine.pdf")
 
 
@@ -226,16 +219,33 @@ burn = 8000
 
 sample = np.load(root + "output.npy")
 temp  = sample[:,itemp,burn:].flatten()
+rad   = sample[:,irad,burn:].flatten() * km / rearth
 cloud = sample[:,icloud,burn:].flatten()
 off   = sample[:,ioff,burn:].flatten() * 1e6
-rad   = sample[:,irad,burn:].flatten() * km / rearth
 H2O   = sample[:,iH2O,burn:].flatten() - 10.0
 CH4   = sample[:,iCH4,burn:].flatten() - 10.0
 CO    = sample[:,iCO ,burn:].flatten() - 10.0
 CO2   = sample[:,iCO2,burn:].flatten() - 10.0
 
+best_pars = np.copy(bestp)
+best_pars[1] *= km / rearth
+best_pars[3] *= 1e6
+best_pars[4:] -= 10.0
+
 
 posterior = np.vstack([temp, rad, cloud, off, H2O, CH4, CO, CO2]).T
+
+mean_pars = np.mean(posterior, axis=0)
+median_pars = np.median(posterior, axis=0)
+plow = np.percentile(posterior, 15.865, axis=0)
+phigh = np.percentile(posterior, 84.135, axis=0)
+
+dec = [0, 2, 1, 0, 1, 1, 1, 1]
+for med, lo, hi, d in zip(median_pars, plow, phigh, dec):
+    low = med-lo
+    high = hi-med
+    print(f'${med:.{d}f}_{{-{low:.{d}f}}}^{{+{high:.{d}f}}}$  &  ')
+
 
 pnames = [
     r"$T$ (K)",
@@ -276,6 +286,50 @@ for irow in range(1, npars):
         xran.append(x)
         yran.append(y)
         lmax.append(np.amax(h)+1)
+
+# Mean molecular masses:
+Zsun = 0.0134
+Xsun = 0.7381
+QX_over_QY = 0.85/0.15  # By volume
+
+species = ['H2', 'He', 'H2O', 'CO', 'CO2', 'CH4']
+nspec = len(species)
+mass = np.array([2.01588, 4.002602, 18.01528, 28.0101, 44.0095, 16.0425])
+H_mass = 1.00794
+He_mass = mass[1]
+
+nq = 1000
+q = np.zeros((3,nq))
+q[2] = np.logspace(-6, 0, nq)
+q[1] = (1-q[2]) / (1.0 + QX_over_QY)
+q[0] = QX_over_QY * q[1]
+mu = np.sum(q*np.expand_dims([2.01588, 4.002602, 18.01528],axis=1),axis=0)
+y = q[1] * He_mass
+x = H_mass * 2.0 * (q[0] + q[2])
+z = mu - x - y
+mass_fraction = np.log10(z/x / (Zsun/Xsun))
+mu_ticks = 2.32, 5.0
+mf_ticks = [mass_fraction[mu>=mu_tick][0] for mu_tick in mu_ticks]
+
+
+u, uind, uinv = np.unique(H2O, return_index=True, return_inverse=True)
+nunique = len(u)
+
+Q = np.zeros((nspec, nunique))
+Q[2] = 10**H2O[uind]
+Q[3] = 10**CO[uind]
+Q[4] = 10**CO2[uind]
+Q[5] = 10**CH4[uind]
+Q[1] = (1-np.sum(Q[2:], axis=0)) / (1.0 + QX_over_QY)
+Q[0] = QX_over_QY * Q[1]
+
+# Mass fractions:
+mu = np.sum(Q* np.expand_dims(mass,axis=1), axis=0)
+Y = He_mass * Q[1]
+X = H_mass * (2*Q[0] + 2*Q[2] + 4*Q[5])
+Z = mu - X - Y
+mass_fraction = np.log10(Z/X / (Zsun/Xsun))
+
 
 # Plot:
 nlevels = 20
@@ -318,21 +372,42 @@ for i in range(npars):
     ax = plt.subplot(npars, npars, h)
     ax.tick_params(labelsize=fs-1, direction='in')
     ax.set_yticks([])
-    h, hx, patch = plt.hist(posterior[:,i], bins=nb, range=ranges[i],
+    h, hx, patch = plt.hist(
+        posterior[:,i], bins=nb, range=ranges[i], histtype='stepfilled',
         color='limegreen', label='Fraine: HST+Spitzer')
     ax.set_xlim(ranges[i])
+    ax.axvline(plow[i], color='0.4', lw=1.5, dashes=(7,1))
+    ax.axvline(phigh[i], color='0.4', lw=1.5, dashes=(7,1))
+    ax.axvline(median_pars[i], color='darkgreen', lw=1.5, dashes=())
     if i != npars-1:
         ax.set_xticklabels("")
     else:
         plt.xlabel(pnames[i], fontsize=fs)
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     if i == 0:
-        plt.legend(loc=(1.1, 0.7))
+        plt.legend(loc=(1.1, 0.7), fontsize=fs)
+
+# Mean molecular mass histogram:
+ax = plt.subplot(npars, npars, 14)
+ax.hist(mass_fraction[uinv], bins=nb, color='limegreen', histtype='stepfilled')
+ax.set_xlabel('$[M_Z/M_X]$', size=fs)
+ax.set_yticks([])
+ax.axvline(np.median(mass_fraction[uinv]), color='darkgreen', lw=1.5)
+zlow = np.percentile(mass_fraction[uinv], 15.865)
+zhigh = np.percentile(mass_fraction[uinv], 84.135)
+ax.axvline(zlow, color='0.4', lw=1.5, dashes=(7,1))
+ax.axvline(zhigh, color='0.4', lw=1.5, dashes=(7,1))
+ax.set_xlim(-3.0, 3.0)
+ax2 = ax.twiny()
+ax2.set_xlim(ax.get_xlim())
+ax2.set_xticks(mf_ticks)
+ax2.set_xticklabels(mu_ticks)
+ax2.set_xlabel('Mean molecular mass', fontsize=fs)
 
 # The colorbar:
 bounds = np.linspace(0, 1.0, nlevels)
 norm = matplotlib.colors.BoundaryNorm(bounds, palette.N)
-ax2 = plt.axes([0.85, 0.57, 0.025, 0.36])
+ax2 = plt.axes([0.965, 0.63, 0.025, 0.36])
 cb = matplotlib.colorbar.ColorbarBase(ax2, cmap=palette, norm=norm,
     spacing='proportional', boundaries=bounds, format='%.1f')
 cb.set_label("Normalized Point Density", fontsize=fs)

@@ -12,6 +12,8 @@ cd $topdir/BART
 git checkout 862cb09
 cd $topdir/BART/modules/transit
 git checkout c698128
+cp $topdir/inputs/ancil/pylineread.py pylineread/src/pylineread.py
+cp $topdir/inputs/ancil/crosssec.c transit/src/crosssec.c
 make
 cd $topdir/BART/modules/MCcubed
 git checkout 7487a47
@@ -40,15 +42,11 @@ cd $topdir/inputs/opacity/CO2
 wget -i wget_HITEMP_CO2.txt
 unzip '*.zip'
 
-# Download the ExoMol CH4 data:
+# Download the ExoMol/repack CH4 data (To be uploaded):
 cd $topdir/inputs/opacity/CH4
-# Go to: http://www.exomol.com/xsecs/12C-1H4
-# and fetch data for:
-#   delta nu = 1.0
-#   nu_min =   500
-#   nu_max = 11999
-# for a range of temperatures from 1000 K to 2000 K in steps of 100 K.
-# Be sure to check the 'two-column output' option.
+wget https://zenodo.org/record/3768504/files/pcubillos/CH4_exomol_yt10to10_0.82-500.0um_100-3500K_threshold_0.03_lbl.dat
+wget http://www.exomol.com/db/CH4/12C-1H4/YT10to10/12C-1H4__YT10to10.pf
+
 
 # Download the TiO opacity data:
 cd $topdir/inputs/opacity/TiO
@@ -67,10 +65,6 @@ cd $topdir/inputs/CIA
 $topdir/BART/modules/transit/scripts/HITRAN_CIA_format.py H2-H2_2011.cia CIA_HITRAN_H2H2_0200-3000K_1.0-500um.dat  50  10
 $topdir/BART/modules/transit/scripts/HITRAN_CIA_format.py H2-He_2011.cia CIA_HITRAN_H2He_0200-9900K_0.5-500um.dat  50  10
 
-# Format cross-section data for Transit:
-cd $topdir/inputs/opacity/CH4
-$topdir/BART/modules/transit/scripts/Yurchenko_CH4_format.py *.sigma
-
 
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Run Transit for CIA:
@@ -80,41 +74,41 @@ $transit -c H2+He-CIA_HITRAN.cfg
 
 # Run Transit:
 cd $topdir/run02_H2O/
-$pyline  -c pyline_H2O-pands_1-20um.cfg
+$pyline -c pyline_H2O-pands_1-20um.cfg
 $transit -c Transit_H2O-pands.cfg
 
 # Run Transit:
 cd $topdir/run03_CO/
-$pyline  -c pyline_CO-HITEMP_1-20um.cfg
+$pyline -c pyline_CO-HITEMP_1-20um.cfg
 $transit -c Transit_CO-HITEMP.cfg
 
 # Run Transit:
 cd $topdir/run04_CO2/
-$pyline  -c pyline_CO2-HITEMP_1-20um.cfg
+$pyline -c pyline_CO2-HITEMP_1-20um.cfg
 $transit -c Transit_CO2-HITEMP.cfg
 
 # Run Transit:
 cd $topdir/run05_CH4/
-$transit -c Transit_CH4-ExoMol.cfg
+$pyline -c pyline_CH4-ExoMol_repack_1-20um.cfg
+$transit -c Transit_CH4-ExoMol_repack.cfg
 
 # Run Transit to produce a TiO-VO opacity file:
 cd $topdir/run06_TiO-VO/
-$pyline  -c pyline_TiO-VO_0.4-1.6um.cfg
+$pyline -c pyline_TiO-VO_0.4-1.6um.cfg
 $transit -c Transit_TiO-VO.cfg --justOpacity
 
 # Figures 4, 5, and 6:
 cd $topdir
-./figure_CIA.py
-./figure_H2O-CO-CO2-CH4-emission.py
-./figure_TiO-VO_opacity.py
+python ./figure_CIA.py
+python ./figure_H2O-CO-CO2-CH4-emission.py
+python ./figure_TiO-VO_opacity.py
 
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-# Download the HITRAN/HITEMP data:
+# Download the Exomol/repack data (to be uploaded):
 cd $topdir/inputs/opacity/H2O
-wget --user=HITRAN --password=getdata -N -i wget_HITEMP_H2O.txt
-unzip '*.zip'
-# FINDME: Replace this with exomol file
+wget https://zenodo.org/record/3768504/files/pcubillos/H2O_exomol_pokazatel_0.24-500.0um_100-3500K_threshold_0.01_lbl.dat
+wget http://www.exomol.com/db/H2O/1H2-16O/POKAZATEL/1H2-16O__POKAZATEL.pf
 
 cd $topdir/inputs/opacity/CH4
 wget https://hitran.org/hitemp/data/bzip2format/06_HITEMP2020.par.bz2
@@ -129,15 +123,14 @@ cp $topdir/inputs/ancil/BART.py     $topdir/BART/
 cp $topdir/inputs/ancil/BARTfunc.py $topdir/BART/code/
 cp $topdir/inputs/ancil/bestFit.py  $topdir/BART/code/
 
+# Make atmfile with uniform abundances for H2O, CO, CO2, and CH4:
+cd $topdir
+python $topdir/inputs/ancil/make_uniform.py
 
 # Generate atmospheric and opacity files
 cd $topdir/run07_HAT-P-11b_BART
 $bart -c BART_inputs_fraine.cfg --justOpacity
 $bart -c BART_inputs_chachan.cfg --justOpacity
-
-# Make atmfile with uniform abundances for H2O, CO, CO2, and CH4:
-cd $topdir
-python $topdir/inputs/ancil/make_uniform.py
 
 # Run BART
 cd $topdir/run07_HAT-P-11b_BART
@@ -145,7 +138,7 @@ $bart -c BART_HATP11b_fraine.cfg
 $bart -c BART_HATP11b_chachan_all.cfg
 $bart -c BART_HATP11b_chachan_hst.cfg
 
-# Figure 13:
+# Figures:
 cd $topdir
-./figure_HATP11b_retrieval_fraine.py
-./figure_HATP11b_retrieval_chachan.py
+python figure_HATP11b_retrieval_fraine.py
+python figure_HATP11b_retrieval_chachan.py
