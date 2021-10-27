@@ -125,15 +125,15 @@ cp $topdir/inputs/ancil/bestFit.py  $topdir/BART/code/
 
 # Make atmfile with uniform abundances for H2O, CO, CO2, and CH4:
 cd $topdir
-python $topdir/inputs/ancil/make_uniform.py
+python $topdir/inputs/ancil/make_uniform_101layers.py
 
 # Generate atmospheric and opacity files
-cd $topdir/run07_HAT-P-11b_BART
+cd $topdir/run07_HAT-P-11b_BART_101layers
 $bart -c BART_inputs_fraine.cfg --justOpacity
 $bart -c BART_inputs_chachan.cfg --justOpacity
 
 # Run BART
-cd $topdir/run07_HAT-P-11b_BART
+cd $topdir/run07_HAT-P-11b_BART_101layers
 $bart -c BART_HATP11b_fraine.cfg
 $bart -c BART_HATP11b_chachan_all.cfg
 $bart -c BART_HATP11b_chachan_hst.cfg

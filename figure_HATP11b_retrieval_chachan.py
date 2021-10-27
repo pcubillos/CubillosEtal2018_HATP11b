@@ -125,8 +125,8 @@ filters = [
     ]
 
 # Retrieval outputs from local run:
-root = "./run07_HAT-P-11b_BART/retrieval_chachan_all/"
-besttcfg  = root + "bestFit_tconfig.cfg"  # Transit cfg file
+root = "./run07_HAT-P-11b_BART_101layers/"
+besttcfg = root + "retrieval_chachan_all/bestFit_tconfig.cfg"
 
 # Transit configuration file for best-fit:
 args = ["transit", "-c", besttcfg]
@@ -152,15 +152,15 @@ irac1_wl, irac2_wl = 1e4/filter_wn[-2], 1e4/filter_wn[-1]
 
 # atmospheric model:
 mol, press, temp, abund_init = ma.readatm(
-    root + "atmosphere_HAT-P-11b_uniform.atm")
+    root + "retrieval_chachan_all/atmosphere_HAT-P-11b_uniform.atm")
 
 bestp_all, bestu_all = bf.read_MCMC_out(
-    "./run07_HAT-P-11b_BART/retrieval_chachan_all/MCMC_chachan_all.log")
+    root + "retrieval_chachan_all/MCMC_chachan_all.log")
 bestT_all, bestrad_all, bestcl_all, bestray_all = bestp_all[0:4]
 bestabund_all = bestp_all[5:]
 
 bestp_hst, bestu_hst = bf.read_MCMC_out(
-    "./run07_HAT-P-11b_BART/retrieval_chachan_hst/MCMC_chachan_hst.log")
+    root + "retrieval_chachan_hst/MCMC_chachan_hst.log")
 bestT_hst, bestrad_hst, bestcl_hst, bestray_hst = bestp_hst[0:4]
 bestabund_hst = bestp_hst[5:]
 
@@ -221,15 +221,17 @@ plt.semilogx(wl, f*mod_all, c="salmon", lw=lw, label="HST + Spitzer")
 plt.plot(chachan_wl[-2:], f*band_hst[-2:], "o", ms=4, c='blue', zorder=3)
 plt.plot(chachan_wl[-2:], f*band_all[-2:], "o", ms=4, c='red', zorder=3)
 
-plt.errorbar(chachan_wl, f*chachan_depth, f*chachan_uncert, fmt="ok", ms=4,
+plt.errorbar(
+    chachan_wl, f*chachan_depth, f*chachan_uncert, fmt="ok", ms=4,
     elinewidth=lw, zorder=4, capthick=lw, label='Chachan et al. (2019)')
-plt.errorbar(fraine_wl, f*fraine_depth, f*fraine_uncert, fmt="o", ms=4,
+plt.errorbar(
+    fraine_wl, f*fraine_depth, f*fraine_uncert, fmt="o", ms=4,
     color='0.7', elinewidth=lw, zorder=0, capthick=lw,
     label='Fraine et al. (2014)')
 
 plt.plot(irac1_wl, 100*irac1_tr + yran[0], color="0.5", lw=lw)
 plt.plot(irac2_wl, 100*irac2_tr + yran[0], color="0.5", lw=lw)
-leg = plt.legend(loc="upper left", fontsize=fs-2)
+plt.legend(loc="upper left", fontsize=fs-2)
 plt.xlabel(r"Wavelength (um)", fontsize=fs)
 plt.ylabel(r"$(R_{\rm p}/R_{\rm s})^2$ (ppm)", fontsize=fs)
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -246,26 +248,24 @@ itemp, irad, icloud, iray, iH2O, iCH4, iCO, iCO2 = np.arange(8)
 
 km = 1e3
 rearth = 6.3781e6
-rjup = 7.1492e7
-rsun = 6.96e8
 
 burn = 8000
 
-sample_all = np.load("run07_HAT-P-11b_BART/retrieval_chachan_all/output.npy")
+sample_all = np.load(f"{root}retrieval_chachan_all/output.npy")
 temp_all  = sample_all[:,itemp,burn:].flatten()
+rad_all   = sample_all[:,irad,burn:].flatten() * km / rearth
 cloud_all = sample_all[:,icloud,burn:].flatten()
 ray_all   = sample_all[:,iray,burn:].flatten()
-rad_all   = sample_all[:,irad,burn:].flatten() * km / rearth
 H2O_all   = sample_all[:,iH2O,burn:].flatten() - 10.0
 CH4_all   = sample_all[:,iCH4,burn:].flatten() - 10.0
 CO_all    = sample_all[:,iCO ,burn:].flatten() - 10.0
 CO2_all   = sample_all[:,iCO2,burn:].flatten() - 10.0
 
-sample_hst = np.load("run07_HAT-P-11b_BART/retrieval_chachan_hst/output.npy")
+sample_hst = np.load(f"{root}/retrieval_chachan_hst/output.npy")
 temp_hst  = sample_hst[:,itemp,burn:].flatten()
+rad_hst   = sample_hst[:,irad,burn:].flatten() * km / rearth
 cloud_hst = sample_hst[:,icloud,burn:].flatten()
 ray_hst   = sample_hst[:,iray,burn:].flatten()
-rad_hst   = sample_hst[:,irad,burn:].flatten() * km / rearth
 H2O_hst   = sample_hst[:,iH2O,burn:].flatten() - 10.0
 CH4_hst   = sample_hst[:,iCH4,burn:].flatten() - 10.0
 CO_hst    = sample_hst[:,iCO ,burn:].flatten() - 10.0
@@ -296,8 +296,9 @@ for hmed,hlo,hhi, amed,alo,ahi, d in zip(
     hhigh = hhi-hmed
     alow = amed-alo
     ahigh = ahi-amed
-    print(f'${hmed:.{d}f}_{{-{hlow:.{d}f}}}^{{+{hhigh:.{d}f}}}$  &  '
-          f'${amed:.{d}f}_{{-{alow:.{d}f}}}^{{+{ahigh:.{d}f}}}$')
+    print(
+        f'${hmed:.{d}f}_{{-{hlow:.{d}f}}}^{{+{hhigh:.{d}f}}}$  &  '
+        f'${amed:.{d}f}_{{-{alow:.{d}f}}}^{{+{ahigh:.{d}f}}}$')
 
 
 pnames = [
@@ -308,7 +309,8 @@ pnames = [
     r"$\log_{10}({\rm H2O})$",
     r"$\log_{10}({\rm CH4})$",
     r"$\log_{10}({\rm CO})$",
-    r"$\log_{10}({\rm CO2})$"]
+    r"$\log_{10}({\rm CO2})$",
+    ]
 
 
 nsamples, npars = np.shape(posterior_all)
@@ -329,10 +331,10 @@ for irow in range(1, npars):
         ran = None
         if ranges[icol] is not None:
             ran = [ranges[icol], ranges[irow]]
-        h, x, y = np.histogram2d(posterior_all[:,icol], posterior_all[:,irow],
-            bins=16, range=ran)
-        h2,x2,y2= np.histogram2d(posterior_hst[:,icol], posterior_hst[:,irow],
-            bins=16, range=ran)
+        h, x, y = np.histogram2d(
+            posterior_all[:,icol], posterior_all[:,irow], bins=16, range=ran)
+        h2, x2, y2 = np.histogram2d(
+            posterior_hst[:,icol], posterior_hst[:,irow], bins=16, range=ran)
         hist.append(h.T)
         hist2.append(h2.T)
         xran.append(x)
@@ -403,15 +405,25 @@ X_all = H_mass * (2*Q_all[0] + 2*Q_all[2] + 4*Q_all[5])
 Z_all = mu_all - X_all - Y_all
 mass_fraction_all = np.log10(Z_all/X_all / (Zsun/Xsun))
 
+m_hst = np.median(mass_fraction_hst[uinv_hst])
+m_hst_lo = np.percentile(mass_fraction_hst[uinv_hst], 15.865, axis=0)
+m_hst_hi = np.percentile(mass_fraction_hst[uinv_hst], 84.135, axis=0)
+m_all = np.median(mass_fraction_all[uinv_all])
+m_all_lo = np.percentile(mass_fraction_all[uinv_all], 15.865, axis=0)
+m_all_hi = np.percentile(mass_fraction_all[uinv_all], 84.135, axis=0)
+print(
+    f'${m_hst:.{d}f}_{{-{m_hst-m_hst_lo:.{d}f}}}^{{+{m_hst_hi-m_hst:.{d}f}}}$\n'
+    f'${m_all:.{d}f}_{{-{m_all-m_all_lo:.{d}f}}}^{{+{m_all_hi-m_all:.{d}f}}}$')
+
+
 # Plot:
 nlevels = 20
 fs = 11
-
+nb = 14
 
 plt.figure(201, figsize=(8.5,8.5))
 plt.clf()
 plt.subplots_adjust(0.08, 0.09, 0.99, 0.99, hspace=0.1, wspace=0.1)
-axes = np.tile(None, (npars, npars))
 k = 0 # Histogram index
 for irow in range(1, npars):
     for icol in range(irow):
@@ -427,14 +439,15 @@ for irow in range(1, npars):
             plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
         else:
             ax.get_xaxis().set_visible(False)
-        cont = ax.contourf(hist[k], cmap=palette, vmin=1, origin='lower',
+        cont = ax.contourf(
+            hist[k], cmap=palette, vmin=1, origin='lower',
             levels=[0]+list(np.linspace(1,lmax[k], nlevels)),
             extent=(xran[k][0], xran[k][-1], yran[k][0], yran[k][-1]))
         xx = 0.5*(xran[k][:-1] + xran[k][1:])
         yy = 0.5*(yran[k][:-1] + yran[k][1:])
         X, Y = np.meshgrid(xx, yy)
-        CS = ax.contour(X, Y, hist2[k],
-            levels=3,
+        CS = ax.contour(
+            X, Y, hist2[k], levels=3,
             linewidths=1.0, colors=plt.cm.Blues(np.linspace(0.3, 0.9, 4)))
         for c in cont.collections:
             c.set_edgecolor("face")
@@ -445,18 +458,19 @@ for irow in range(1, npars):
         k += 1
 
 # Histograms
-nb = 14
 for i in range(npars):
     h = i*(npars+1) + 1
     ax = plt.subplot(npars, npars, h)
     ax.tick_params(labelsize=fs-1, direction='in')
     ax.set_yticks([])
     h, hx, patch = plt.hist(
-        posterior_hst[:,i], bins=nb, range=ranges[i], histtype='stepfilled',
-        color='cornflowerblue', label='Chachan: HST')
+        posterior_hst[:,i], bins=nb, range=ranges[i],
+        histtype='stepfilled', color='cornflowerblue',
+        label='Chachan: HST')
     h, hx, patch = plt.hist(
-        posterior_all[:,i], bins=nb, range=ranges[i], histtype='stepfilled',
-        color='salmon', alpha=0.7, label='Chachan: HST+Spitzer')
+        posterior_all[:,i], bins=nb, range=ranges[i],
+        histtype='stepfilled', color='salmon',
+        alpha=0.7, label='Chachan: HST+Spitzer')
     ax.set_xlim(ranges[i])
     ax.axvline(median_pars_hst[i], color='b', lw=1.5, dashes=())
     ax.axvline(median_pars_all[i], color='r', lw=1.5, dashes=())
@@ -487,11 +501,12 @@ ax2.set_xticks(mf_ticks)
 ax2.set_xticklabels(mu_ticks)
 ax2.set_xlabel('Mean molecular mass', fontsize=fs)
 
-# The colorbar:
+# The colorbars:
 bounds = np.linspace(0, 1.0, nlevels)
 norm = matplotlib.colors.BoundaryNorm(bounds, palette.N)
 ax2 = plt.axes([0.94, 0.63, 0.025, 0.36])
-cb = matplotlib.colorbar.ColorbarBase(ax2, cmap=palette, norm=norm,
+cb = matplotlib.colorbar.ColorbarBase(
+    ax2, cmap=palette, norm=norm,
     spacing='proportional', boundaries=bounds, format='%.1f')
 cb.set_label("Normalized Point Density", fontsize=fs)
 cb.ax.yaxis.set_ticks_position('left')
@@ -503,8 +518,8 @@ for c in ax2.collections:
 ax3 = plt.axes([0.965, 0.63, 0.025, 0.36])
 xx = np.linspace(0, 1, 100)
 X, Y = np.meshgrid(xx, xx)
-ax3.contourf(X, Y, Y, levels=3,
-    colors=plt.cm.Blues(np.linspace(0.3, 0.9, 4)))
+ax3.contourf(
+    X, Y, Y, levels=3, colors=plt.cm.Blues(np.linspace(0.3, 0.9, 4)))
 ax3.set_ylim(0,1)
 ax3.set_yticks([])
 ax3.set_xticks([])

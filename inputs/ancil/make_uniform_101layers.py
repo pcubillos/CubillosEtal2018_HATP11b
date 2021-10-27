@@ -11,7 +11,7 @@ Q = np.array([0.14551, 0.85364, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10])
 nmol = len(molecs)
 
 # Pressure profile:
-nlayers = 51
+nlayers = 101
 pbottom = 1e+2
 ptop = 1e-8
 press = np.logspace(np.log10(pbottom), np.log10(ptop), nlayers)
@@ -32,7 +32,7 @@ radius0 = 28312.643
 radius = -H * np.log(press/pbottom) + radius0
 
 # Write atmfile with unifrom abundances:
-with open("run07_HAT-P-11b_BART/atmosphere_HAT-P-11b_uniform.atm", 'w') as f:
+with open("run07_HAT-P-11b_BART_101layers/atmosphere_HAT-P-11b_uniform.atm", 'w') as f:
     f.write(
         '# TEA atmospheric file with uniform abundances\n\n'
         '# Units:\n'
